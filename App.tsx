@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Moon, Sun, Table2, Braces, ShieldCheck, Github, Linkedin, Globe } from 'lucide-react';
+import { Moon, Sun, Braces, ShieldCheck, Github, Linkedin, Globe } from 'lucide-react';
 import InputArea from './components/InputArea';
 import PreviewTable from './components/PreviewTable';
 import AdSlot from './components/AdSlot';
@@ -15,11 +15,30 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [alert, setAlert] = useState<AlertMessage | null>(null);
   const [inputError, setInputError] = useState<string | null>(null);
+  const [adsBlocked, setAdsBlocked] = useState(false);
 
   useEffect(() => {
+    // Theme initialization
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
       setTheme('dark');
     }
+
+    // AdBlock Detection "Bait"
+    // We create a fake ad element. If adblock is on, this element is usually hidden or has 0 height.
+    const bait = document.createElement('div');
+    bait.className = 'pub_300x250 pub_300x250m pub_728x90 text-ad textAd text_ad text_ads text-ads text-ad-links';
+    bait.style.cssText = 'height: 1px; width: 1px; position: absolute; left: -10000px; top: -1000px;';
+    document.body.appendChild(bait);
+
+    const checkAdBlock = () => {
+      if (bait.offsetParent === null || bait.offsetHeight === 0 || bait.clientHeight === 0) {
+        setAdsBlocked(true);
+      }
+      bait.remove();
+    };
+
+    // Small delay to allow extensions to act
+    setTimeout(checkAdBlock, 100);
   }, []);
 
   useEffect(() => {
@@ -124,10 +143,12 @@ function App() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-h-0 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 overflow-hidden">
         
-        {/* Top Ad Placement */}
-        <div className="flex-none w-full mb-2">
-          <AdSlot position="top" />
-        </div>
+        {/* Top Ad Placement - Only show if not blocked */}
+        {!adsBlocked && (
+          <div className="flex-none w-full mb-2 min-h-[50px]">
+            <AdSlot position="top" onError={() => setAdsBlocked(true)} />
+          </div>
+        )}
 
         {/* Alert Toast */}
         {alert && (
@@ -146,13 +167,18 @@ function App() {
           {/* Main Column: Tools */}
           <div className="flex-1 flex flex-col min-w-0 min-h-0">
             
-            {/* Privacy Trust Message */}
+            {/* Privacy Trust Message - Dynamic Text based on Ads */}
             <div className="flex-none flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-2 px-1">
-              <ShieldCheck size={12} className="text-green-600 dark:text-green-500" />
-              <span>Your JSON is processed locally in your browser. Ads do not access your data.</span>
+              <ShieldCheck size={12} className={adsBlocked ? "text-orange-500" : "text-green-600 dark:text-green-500"} />
+              <span>
+                Your JSON is processed locally in your browser.
+                {!adsBlocked 
+                  ? " Ads do not access your data." 
+                  : " There was an unexpected error. Finish what you were doing."}
+              </span>
             </div>
 
-            {/* Dynamic Tool Area - Flex 1 to take remaining height, min-h-0 to allow scrolling inside */}
+            {/* Dynamic Tool Area */}
             <div className="flex-1 bg-white dark:bg-dark-secondary rounded-2xl shadow-xl overflow-hidden border border-gray-100 dark:border-gray-800 p-2 relative flex flex-col min-h-0">
               {viewMode === ViewMode.INPUT ? (
                 <InputArea 
@@ -174,10 +200,12 @@ function App() {
               )}
             </div>
 
-            {/* Bottom Ad - Visible on Mobile/Tablet */}
-            <div className="flex-none mt-2 lg:hidden">
-               <AdSlot position="bottom" />
-            </div>
+            {/* Bottom Ad - Only show if not blocked (Mobile/Tablet) */}
+            {!adsBlocked && (
+              <div className="flex-none mt-2 lg:hidden min-h-[50px]">
+                 <AdSlot position="bottom" onError={() => setAdsBlocked(true)} />
+              </div>
+            )}
           </div>
         </div>
       </main>

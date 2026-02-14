@@ -1,20 +1,41 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# JSON to Excel/CSV Converter
 
-# Run and deploy your AI Studio app
+A fast, lightweight, and secure web application to validate, format, and convert JSON data into Excel or CSV formats. Built with privacy and performance in mind.
 
-This contains everything you need to run your app locally.
+## Features
 
-View your app in AI Studio: https://ai.studio/apps/drive/1RbQC5q6qMZkqWP7TOz49WAz1rIZxmqjE
+*   **JSON Processing**:
+    *   **Validation**: Real-time error detection with line/column pointers.
+    *   **Formatting/Prettify**: Auto-indentation for readability.
+    *   **Minification**: Compress JSON to single line.
+    *   **Auto-Fix**: Attempt to fix common JSON errors like missing quotes or trailing commas.
+    *   **String Manipulation**: Escape and unescape JSON strings.
+*   **Visualizers**:
+    *   **Code Editor**: Powerful Monaco editor (VS Code like) with syntax highlighting.
+    *   **Tree View**: Interactive collapsible tree structure to navigate large JSON files.
+    *   **Split View**: Work with code and tree view simultaneously.
+*   **Conversion**:
+    *   **Flattening**: Intelligently flattens nested objects and arrays into a tabular format.
+    *   **Preview**: Searchable and paginated table preview of your data.
+    *   **Export**: Download as `.xlsx` (Excel) or `.csv`.
+*   **UX/UI**:
+    *   **Dark Mode**: Fully supported dark theme.
+    *   **Drag & Drop**: Easy file upload.
+    *   **Responsive**: Works on desktop, tablets, and mobile devices.
+    *   **Privacy**: All processing happens client-side in the browser. No data is sent to a server.
 
-## Run Locally
+## Tech Stack
 
-**Prerequisites:**  Node.js
+*   **Frontend**: React, TypeScript
+*   **Styling**: Tailwind CSS
+*   **Editor**: Monaco Editor (`@monaco-editor/react`)
+*   **Icons**: Lucide React
+*   **Excel Logic**: SheetJS (`xlsx`)
+*   **Build Tooling**: Vite / ESM (via CDN for this specific build)
 
+## Credits
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Created by **Sahas** with the help of **Google AI**.
+
+---
+*© 2024 JSON Tools. All rights reserved.*

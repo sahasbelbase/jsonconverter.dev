@@ -2,13 +2,14 @@ import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { 
   Upload, FileJson, Check, AlertCircle, 
   Code, Network, Wand2, Braces, Minimize2, ArrowRightLeft, 
-  FileCode2, Trash2, ShieldAlert, Copy, Columns, Search, X
+  FileCode2, Trash2, ShieldAlert, Copy, Columns, Search, X,
+  Zap
 } from 'lucide-react';
 import Button from './Button';
 import JsonTreeView from './JsonTreeView';
 import MonacoEditor from './MonacoEditor';
 import { JsonStats } from '../types';
-import { getJsonStats, fixJson, unescapeString, getErrorLocation } from '../utils/jsonUtils';
+import { getJsonStats, fixJson, unescapeString, getErrorLocation, analyzeJsonError } from '../utils/jsonUtils';
 
 interface InputAreaProps {
   value: string;
@@ -28,6 +29,9 @@ interface ErrorLoc {
 const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isProcessing, error: parentError }) => {
   const [mode, setMode] = useState<TabMode>('code');
   const [isSplitView, setIsSplitView] = useState(() => typeof window !== 'undefined' && window.innerWidth > 1024);
+  const [activePane, setActivePane] = useState<'editor' | 'tree'>('editor');
+  const [autoFlatten, setAutoFlatten] = useState(false);
+  
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -38,12 +42,17 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
 
   const [copySuccess, setCopySuccess] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [errorSuggestion, setErrorSuggestion] = useState<string | null>(null);
   const [errorLoc, setErrorLoc] = useState<ErrorLoc | null>(null);
   const [stats, setStats] = useState<JsonStats | null>(null);
   const [parsedJson, setParsedJson] = useState<any>(null);
   
   // Monaco Ref
   const editorRef = useRef<any>(null);
+  const decorationIdsRef = useRef<string[]>([]);
+
+  // Active Error Helper
+  const activeError = parentError || localError;
   
   // Detect dark mode from html class
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -55,22 +64,57 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
     return () => observer.disconnect();
   }, []);
 
-  // Shortcut Handler (Ctrl+F)
+  // Shortcut Handler (Ctrl+F, Ctrl+Enter)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl + Enter: Process
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        // Only process if we have value and no error
+        if (value.trim() && !activeError) {
+          onProcess();
+        }
+        return;
+      }
+
+      // Ctrl + F: Search
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-        // If Monaco is focused, let Monaco handle it (it has its own widget)
+        // If the Editor is explicitly focused, let Monaco handle it (default behavior)
         if (editorRef.current && editorRef.current.hasTextFocus()) {
-          return; 
+          return;
         }
 
-        // If in Tree View or Split View, toggle our custom search
-        if (mode === 'tree' || isSplitView) {
+        // Context-aware Search for Split View
+        if (isSplitView) {
+          if (activePane === 'editor') {
+            e.preventDefault();
+            // Focus editor and trigger Find
+            editorRef.current?.focus();
+            editorRef.current?.trigger('source', 'actions.find');
+          } else {
+            // Focus Tree Search
+            e.preventDefault();
+            setShowTreeSearch(true);
+            setTimeout(() => treeSearchInputRef.current?.focus(), 50);
+          }
+          return;
+        }
+
+        // Single View Mode logic
+        if (mode === 'tree') {
           e.preventDefault();
           setShowTreeSearch(true);
           setTimeout(() => treeSearchInputRef.current?.focus(), 50);
+        } else if (mode === 'code') {
+          // If in code mode but not focused, focus it
+          if (editorRef.current && !editorRef.current.hasTextFocus()) {
+            e.preventDefault();
+            editorRef.current.focus();
+            editorRef.current.trigger('source', 'actions.find');
+          }
         }
       }
+      
       // Esc to close search
       if (e.key === 'Escape' && showTreeSearch) {
         setShowTreeSearch(false);
@@ -80,13 +124,16 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [mode, isSplitView, showTreeSearch]);
+  }, [mode, isSplitView, showTreeSearch, value, onProcess, activePane, activeError]); 
 
   // Live Validation & Stats
   useEffect(() => {
+    // Immediate feedback: clear errors on change
+    setLocalError(null);
+    setErrorSuggestion(null);
+    setErrorLoc(null);
+
     if (!value.trim()) {
-      setLocalError(null);
-      setErrorLoc(null);
       setStats(null);
       setParsedJson(null);
       return;
@@ -96,12 +143,18 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
     const timer = setTimeout(() => {
       try {
         const parsed = JSON.parse(value);
-        setLocalError(null);
-        setErrorLoc(null);
+        // Success
         setParsedJson(parsed);
-        setStats(getJsonStats(parsed));
+        const newStats = getJsonStats(parsed);
+        setStats(newStats);
+        
+        // Auto Flatten if enabled
+        if (autoFlatten) {
+          onProcess();
+        }
       } catch (e: any) {
         setLocalError(e.message);
+        setErrorSuggestion(analyzeJsonError(e, value)); // Analyze for suggestion
         setStats(null);
         setParsedJson(null);
         
@@ -117,22 +170,54 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [value]);
+  }, [value, autoFlatten, onProcess]);
 
-  const activeError = parentError || localError;
-
-  // Auto-scroll to error location
+  // Auto-scroll and Highlight error location
   useEffect(() => {
-    if (activeError && errorLoc && editorRef.current) {
-      if (mode === 'code' || isSplitView) {
-        editorRef.current.revealPositionInCenter({ 
-          lineNumber: errorLoc.line, 
-          column: errorLoc.column 
-        });
-        editorRef.current.setPosition({ 
-          lineNumber: errorLoc.line, 
-          column: errorLoc.column 
-        });
+    if (editorRef.current) {
+      if (activeError && errorLoc) {
+         // Scroll to error
+         if (mode === 'code' || isSplitView) {
+            editorRef.current.revealPositionInCenter({ 
+              lineNumber: errorLoc.line, 
+              column: errorLoc.column 
+            });
+         }
+         
+         // Add Decorations (Highlight)
+         const newDecorations = [
+            {
+               range: {
+                 startLineNumber: errorLoc.line,
+                 startColumn: errorLoc.column,
+                 endLineNumber: errorLoc.line,
+                 endColumn: errorLoc.column + 1
+               },
+               options: {
+                 inlineClassName: 'bg-red-500/30 dark:bg-red-500/50 rounded-sm cursor-help',
+                 hoverMessage: { value: `**Error**: ${activeError}` }
+               }
+            },
+            {
+               range: {
+                   startLineNumber: errorLoc.line,
+                   startColumn: 1,
+                   endLineNumber: errorLoc.line,
+                   endColumn: 1
+               },
+               options: {
+                   isWholeLine: true,
+                   className: 'bg-red-100/50 dark:bg-red-900/20'
+               }
+            }
+         ];
+         decorationIdsRef.current = editorRef.current.deltaDecorations(decorationIdsRef.current, newDecorations);
+
+      } else {
+         // Clear decorations if no error
+         if (decorationIdsRef.current.length > 0) {
+            decorationIdsRef.current = editorRef.current.deltaDecorations(decorationIdsRef.current, []);
+         }
       }
     }
   }, [errorLoc, activeError, mode, isSplitView]);
@@ -197,6 +282,8 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
   const handleFixJson = () => {
     const fixed = fixJson(value);
     onChange(fixed);
+    // Switch to code view to see the magic
+    if (mode === 'tree' && !isSplitView) setMode('code');
   };
 
   const handleUnescape = () => {
@@ -239,10 +326,10 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
     <div className="flex flex-col h-full space-y-4">
       {/* Top Toolbar */}
       <div className="flex-none flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-dark-secondary p-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-        <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+        <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto max-w-full">
           <button
             onClick={() => { setMode('code'); setIsSplitView(false); }}
-            className={`flex items-center px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+            className={`flex items-center px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
               mode === 'code' && !isSplitView
                 ? 'bg-white dark:bg-gray-700 text-primary shadow-sm' 
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
@@ -252,7 +339,7 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
           </button>
           <button
             onClick={() => setMode('upload')}
-            className={`flex items-center px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+            className={`flex items-center px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
               mode === 'upload' 
                 ? 'bg-white dark:bg-gray-700 text-primary shadow-sm' 
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
@@ -263,7 +350,7 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
           
           <button
             onClick={() => { setMode('tree'); setIsSplitView(false); }}
-             className={`flex items-center px-4 py-1.5 rounded-md text-sm font-medium transition-all lg:hidden ${
+             className={`flex items-center px-4 py-1.5 rounded-md text-sm font-medium transition-all lg:hidden whitespace-nowrap ${
               mode === 'tree' 
                 ? 'bg-white dark:bg-gray-700 text-primary shadow-sm' 
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
@@ -275,7 +362,7 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
           {/* Desktop Split View Toggle */}
           <button
             onClick={() => { setIsSplitView(!isSplitView); setMode('code'); }}
-            className={`hidden lg:flex items-center px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+            className={`hidden lg:flex items-center px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
               isSplitView
                 ? 'bg-white dark:bg-gray-700 text-primary shadow-sm' 
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
@@ -287,15 +374,31 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
         </div>
 
         {(mode === 'code' || isSplitView) && (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1 items-center">
+             <button
+                onClick={() => setAutoFlatten(!autoFlatten)}
+                className={`p-2 rounded transition-colors mr-1 border ${
+                  autoFlatten 
+                    ? 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700' 
+                    : 'text-gray-400 border-transparent hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+                title={`Auto-Flatten is ${autoFlatten ? 'ON' : 'OFF'}`}
+             >
+               <Zap size={16} className={autoFlatten ? 'fill-current' : ''} />
+             </button>
+
+             <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1 self-center" />
+
              <button onClick={formatJson} disabled={!!activeError && !parsedJson} title="Format (Prettify)" className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded disabled:opacity-30 transition-colors">
                 <Braces size={16} />
              </button>
              <button onClick={minifyJson} disabled={!!activeError} title="Minify" className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded disabled:opacity-30 transition-colors">
                 <Minimize2 size={16} />
              </button>
+             
              <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1 self-center" />
-             <button onClick={handleFixJson} title="Auto Fix Quotes/Commas" className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors">
+
+             <button onClick={handleFixJson} title="Auto fix quotes and commas" className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors ring-1 ring-blue-100 dark:ring-blue-900">
                 <Wand2 size={16} />
              </button>
              <button onClick={handleUnescape} title="Unescape JSON String" className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
@@ -317,7 +420,7 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
 
       {/* Editor / Viewer Container */}
       <div 
-        className={`flex-1 min-h-0 relative rounded-xl border-2 transition-all duration-200 overflow-hidden flex shadow-inner ${
+        className={`flex-1 min-h-0 relative rounded-xl border-2 transition-colors duration-200 overflow-hidden flex shadow-inner ${
           isDragOver 
             ? 'border-primary bg-blue-50 dark:bg-blue-900/20' 
             : activeError 
@@ -341,7 +444,10 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
 
         {/* --- LEFT PANE (Editor) --- */}
         {(mode === 'code' || isSplitView) && (
-            <div className={`flex flex-col relative h-full transition-all duration-300 ${isSplitView ? 'w-1/2 border-r border-gray-200 dark:border-gray-700' : 'w-full'}`}>
+            <div 
+              className={`flex flex-col relative h-full group ${isSplitView ? 'w-1/2 border-r border-gray-200 dark:border-gray-700' : 'w-full'}`}
+              onClick={() => setActivePane('editor')}
+            >
               <div className="flex-1 min-h-0 relative">
                 <MonacoEditor 
                   value={value} 
@@ -357,16 +463,26 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
                   ? 'bg-red-100 dark:bg-red-900/40 border-red-200 dark:border-red-800 text-red-700 dark:text-red-200' 
                   : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400'
               }`}>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 overflow-hidden">
                   {activeError ? <ShieldAlert size={14} className="shrink-0" /> : <Check size={14} className="text-green-500 shrink-0" />}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4">
-                    <span className={`font-mono font-medium truncate max-w-xs sm:max-w-md ${activeError ? 'text-red-700 dark:text-red-200' : 'text-green-600 dark:text-green-400'}`}>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 truncate">
+                    <span className={`font-mono font-medium ${activeError ? 'text-red-700 dark:text-red-200' : 'text-green-600 dark:text-green-400'}`}>
                       {activeError ? 'Invalid JSON' : (value.trim() ? 'Valid JSON' : 'Empty')}
                     </span>
-                    {activeError && errorLoc && (
-                       <span className="font-mono bg-red-200 dark:bg-red-800 px-1.5 py-0.5 rounded text-red-800 dark:text-red-100">
-                         Ln {errorLoc.line}, Col {errorLoc.column}
-                       </span>
+                    {activeError && (
+                      <div className="flex gap-2 items-center">
+                        {errorLoc && (
+                          <span className="font-mono bg-red-200 dark:bg-red-800 px-1.5 py-0.5 rounded text-red-800 dark:text-red-100 shrink-0">
+                            Ln {errorLoc.line}, Col {errorLoc.column}
+                          </span>
+                        )}
+                        {/* Error Suggestion */}
+                        {errorSuggestion && (
+                           <span className="hidden sm:inline-block text-red-600 dark:text-red-300 italic border-l border-red-300 dark:border-red-700 pl-2 ml-1">
+                             {errorSuggestion}
+                           </span>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -376,6 +492,8 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
                     <span title="File Size">💾 {stats.size}</span>
                     <span title="Total Keys">🔑 {stats.keys}</span>
                     <span title="Nesting Depth">📚 {stats.depth}</span>
+                    <span title="Objects">📦 {stats.objects}</span>
+                    <span title="Arrays">📋 {stats.arrays}</span>
                   </div>
                 )}
               </div>
@@ -384,7 +502,10 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
 
         {/* --- RIGHT PANE (Tree View) --- */}
         {(mode === 'tree' || isSplitView) && (
-          <div className={`flex flex-col h-full bg-gray-50 dark:bg-black/20 ${isSplitView ? 'w-1/2' : 'w-full'}`}>
+          <div 
+             className={`flex flex-col h-full bg-gray-50 dark:bg-black/20 ${isSplitView ? 'w-1/2' : 'w-full'}`}
+             onClick={() => setActivePane('tree')}
+          >
              
              {/* Tree View Toolbar & Search */}
              <div className="flex-none h-10 border-b border-gray-200 dark:border-gray-700 flex items-center px-2 bg-gray-100 dark:bg-gray-800/50 justify-between">
@@ -397,10 +518,11 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
                        <input 
                          ref={treeSearchInputRef}
                          type="text" 
-                         className="w-32 sm:w-48 text-xs px-2 py-1 outline-none bg-transparent"
+                         className="w-32 sm:w-48 text-xs px-2 py-1 outline-none bg-transparent dark:text-white"
                          placeholder="Find Key/Value..."
                          value={treeSearchTerm}
                          onChange={(e) => setTreeSearchTerm(e.target.value)}
+                         onKeyDown={(e) => { e.stopPropagation(); /* Prevent other shortcuts */ }}
                        />
                        <button onClick={() => { setTreeSearchTerm(''); setShowTreeSearch(false); }} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
                          <X size={14} />
@@ -473,6 +595,7 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
           isLoading={isProcessing}
           className="w-full sm:w-auto shadow-lg shadow-blue-500/20"
           size="lg"
+          title="Shortcut: Ctrl + Enter"
         >
           Convert to Excel / CSV
         </Button>

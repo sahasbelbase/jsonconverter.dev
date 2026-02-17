@@ -1,3 +1,4 @@
+
 export type FlatJSON = Record<string, string | number | boolean | null>;
 
 export interface ParsedData {
@@ -9,6 +10,13 @@ export interface ParsedData {
 export enum ViewMode {
   INPUT = 'INPUT',
   PREVIEW = 'PREVIEW'
+}
+
+export enum ToolMode {
+  CONVERTER = 'CONVERTER',
+  DIFF = 'DIFF',
+  FORMAT = 'FORMAT',
+  HTML = 'HTML'
 }
 
 export type AlertType = 'success' | 'error' | 'info';

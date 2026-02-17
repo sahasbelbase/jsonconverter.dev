@@ -8,14 +8,16 @@ interface MonacoEditorProps {
   value: string;
   onChange: (value: string | undefined) => void;
   theme?: 'light' | 'dark';
+  language?: string;
   onMount?: (editor: any, monaco: any) => void;
 }
 
-const MonacoEditor: React.FC<MonacoEditorProps> = ({ value, onChange, theme = 'light', onMount }) => {
+const MonacoEditor: React.FC<MonacoEditorProps> = ({ value, onChange, theme = 'light', language = 'json', onMount }) => {
   return (
     <Editor
       height="100%"
-      defaultLanguage="json"
+      defaultLanguage={language}
+      language={language}
       value={value}
       onChange={onChange}
       theme={theme === 'dark' ? 'vs-dark' : 'light'}

@@ -129,28 +129,57 @@ export const getJsonStats = (data: any): JsonStats => {
 
 export const fixJson = (input: string): string => {
   if (!input) return "";
-  let fixed = input;
+  let fixed = input.trim();
 
-  // 1. Remove comments (single line // and multi-line /* */)
+  // 1. Fix "Smart Quotes" (curly quotes) from Word/Blogs to standard quotes
+  fixed = fixed.replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"');
+
+  // 2. Remove comments (Block /* */ and Line //)
+  fixed = fixed.replace(/\/\*[\s\S]*?\*\//g, ""); 
   fixed = fixed.replace(/\/\/.*$/gm, ""); 
-  fixed = fixed.replace(/\/\*[\s\S]*?\*\//g, "");
 
-  // 2. Fix trailing commas before closing braces/brackets
-  fixed = fixed.replace(/,(\s*[}\]])/g, '$1');
+  // 3. Python/JS constants to JSON
+  fixed = fixed.replace(/\bNone\b/g, "null");
+  fixed = fixed.replace(/\bTrue\b/g, "true");
+  fixed = fixed.replace(/\bFalse\b/g, "false");
+  fixed = fixed.replace(/\bundefined\b/g, "null");
 
-  // 3. Replace single quotes with double quotes for KEYS
-  // Looks for 'key': or 'key' :
-  // The regex ensures it doesn't run inside strings by anchoring to { or , or start
-  fixed = fixed.replace(/([{,]\s*)'([^']+?)'\s*:/g, '$1"$2":');
+  // 4. MongoDB Types (ObjectId, ISODate) -> Strings
+  // ObjectId("...") -> "..."
+  fixed = fixed.replace(/ObjectId\s*\(\s*["']([^"']+)["']\s*\)/g, '"$1"');
+  // ISODate("...") -> "..."
+  fixed = fixed.replace(/ISODate\s*\(\s*["']([^"']+)["']\s*\)/g, '"$1"');
 
-  // 4. Quote UNQUOTED keys
-  // Looks for { key: or , key: 
-  fixed = fixed.replace(/([{,]\s*)([a-zA-Z0-9_$]+)\s*:/g, '$1"$2":');
+  // 5. Fix Quotes
+  
+  // Replace single quotes for Keys: 'key': -> "key":
+  // Matches start of line or after { or , followed by 'key':
+  fixed = fixed.replace(/(^|[{,]\s*)'([^']+)'\s*:/g, '$1"$2":');
+  
+  // Replace unquoted keys: key: -> "key":
+  // We match valid variable names followed by a colon
+  fixed = fixed.replace(/(^|[{,]\s*)([a-zA-Z0-9_$]+)\s*:/g, '$1"$2":');
 
-  // 5. Replace single quotes with double quotes for VALUES
-  // This is tricky. We match ": '...'" but handle escaped quotes inside
-  // Pattern: : ' (anything not ' or escaped ') ' followed by , } or ]
-  fixed = fixed.replace(/:\s*'((?:[^'\\]|\\.)*)'\s*(?=[,}\]])/g, ': "$1"');
+  // Replace single quotes for Values: : 'value' -> : "value"
+  // Safe(r) regex: matches : '...' where ... does not contain unescaped '
+  // and is followed by comma, closing brace, or closing bracket
+  fixed = fixed.replace(/:\s*'([^'\\]*(?:\\.[^'\\]*)*)'(?=\s*[,}\]])/g, ': "$1"');
+
+  // 6. Structural Fixes
+  
+  // Trailing commas: , } -> } and , ] -> ]
+  fixed = fixed.replace(/,\s*([}\]])/g, '$1');
+
+  // Missing commas between objects: } { -> }, {
+  fixed = fixed.replace(/}\s*{/g, '}, {');
+  
+  // Missing commas between arrays: ] [ -> ], [
+  fixed = fixed.replace(/]\s*\[/g, '], [');
+
+  // Missing commas between properties (risky but useful for "dirty" logs)
+  // e.g. "a": 1 "b": 2 -> "a": 1, "b": 2
+  // We look for a value (number, bool, null, or string) followed by whitespace then a quote (start of next key)
+  fixed = fixed.replace(/("[\s\S]*?"|true|false|null|-?\d+(?:\.\d+)?)\s+(?=")/g, '$1, ');
 
   return fixed;
 };
@@ -179,4 +208,40 @@ export const getErrorLocation = (json: string, position: number | undefined): { 
   const column = lines[lines.length - 1].length + 1;
   
   return { line, column };
+};
+
+/**
+ * Analyzes a JSON parse error and provides a human-readable suggestion.
+ */
+export const analyzeJsonError = (error: Error, json: string): string | null => {
+  if (!error || !error.message) return null;
+  const msg = error.message;
+
+  if (msg.includes("Unexpected token }") || msg.match(/Unexpected token .*} in JSON at position/)) {
+    return "Trailing comma? Check for an extra comma before the closing brace/bracket.";
+  }
+  if (msg.includes("Unexpected token '") || msg.includes("Unexpected string")) {
+    return "JSON standard requires double quotes (\") for keys and string values. Single quotes (') are not allowed.";
+  }
+  if (msg.includes("Expected property name or '}'")) {
+    return "Property names (keys) must be enclosed in double quotes.";
+  }
+  if (msg.includes("Unexpected end of JSON input")) {
+    return "The JSON input seems incomplete. Check for missing closing braces '}' or brackets ']'.";
+  }
+  
+  // Try to be smart about position
+  const match = msg.match(/at position (\d+)/);
+  if (match && match[1]) {
+      const pos = parseInt(match[1]);
+      const char = json.charAt(pos);
+      const prevChar = json.charAt(pos-1);
+      
+      if (char === '"' && prevChar !== ':' && prevChar !== '[' && prevChar !== ',') {
+          return "Missing a comma or colon before this quote?";
+      }
+      if (char === ':') return "Colon used incorrectly. Ensure keys are quoted.";
+  }
+
+  return null;
 };

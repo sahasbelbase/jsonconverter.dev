@@ -1,11 +1,17 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Suppress benign ResizeObserver error which can occur when using Monaco Editor
-const resizeObserverLoopErr = 'ResizeObserver loop completed with undelivered notifications.';
+// This error is harmless and typically happens when a ResizeObserver callback 
+// modifies the size of an observed element within the same frame.
 window.addEventListener('error', (e) => {
-  if (e.message === resizeObserverLoopErr) {
+  if (
+    e.message === 'ResizeObserver loop completed with undelivered notifications.' || 
+    e.message === 'ResizeObserver loop limit exceeded' ||
+    (typeof e.message === 'string' && e.message.includes('ResizeObserver'))
+  ) {
     e.stopImmediatePropagation();
   }
 });
@@ -18,6 +24,8 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>
 );

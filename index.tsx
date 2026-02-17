@@ -6,13 +6,21 @@ import ErrorBoundary from './components/ErrorBoundary';
 // Suppress benign ResizeObserver error which can occur when using Monaco Editor
 // This error is harmless and typically happens when a ResizeObserver callback 
 // modifies the size of an observed element within the same frame.
+const resizeObserverLoopErr = /ResizeObserver loop limit exceeded|ResizeObserver loop completed with undelivered notifications/;
+
+// Prevent runtime error from bubbling up
 window.addEventListener('error', (e) => {
-  if (
-    e.message === 'ResizeObserver loop completed with undelivered notifications.' || 
-    e.message === 'ResizeObserver loop limit exceeded' ||
-    (typeof e.message === 'string' && e.message.includes('ResizeObserver'))
-  ) {
+  if (resizeObserverLoopErr.test(e.message)) {
     e.stopImmediatePropagation();
+    e.preventDefault();
+  }
+});
+
+// Some browsers/extensions might log it as an unhandled rejection
+window.addEventListener('unhandledrejection', (e) => {
+  const msg = e.reason instanceof Error ? e.reason.message : String(e.reason);
+  if (resizeObserverLoopErr.test(msg)) {
+    e.preventDefault();
   }
 });
 

@@ -198,7 +198,7 @@ const Tokenizer: React.FC = () => {
                   <Type size={14}/> Input Text
                 </span>
              </div>
-             <div className="flex-1 relative">
+             <div className="flex-1 relative overflow-hidden">
                 {isLoading ? (
                   <div className="absolute inset-0 flex items-center justify-center text-gray-400">Loading Model...</div>
                 ) : (

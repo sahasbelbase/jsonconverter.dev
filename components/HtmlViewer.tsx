@@ -169,7 +169,7 @@ const HtmlViewer: React.FC<HtmlViewerProps> = ({ value, onChange }) => {
       >
         {/* Editor Pane */}
         {(activePane === 'editor' || isSplitView) && (
-            <div className={`flex flex-col relative h-full ${isSplitView ? 'w-1/2 border-r border-gray-200 dark:border-gray-700' : 'w-full'}`}>
+            <div className={`flex flex-col relative h-full overflow-hidden ${isSplitView ? 'w-1/2 border-r border-gray-200 dark:border-gray-700' : 'w-full'}`}>
                 <MonacoEditor 
                   value={value}
                   onChange={(val) => onChange(val || '')}
@@ -177,18 +177,6 @@ const HtmlViewer: React.FC<HtmlViewerProps> = ({ value, onChange }) => {
                   onMount={handleEditorMount}
                   // Override language to html
                 />
-                {/* Because MonacoEditor defaultLanguage is json in the generic component, 
-                    we ideally should pass a language prop. 
-                    However, `MonacoEditor.tsx` hardcodes defaultLanguage="json".
-                    We need to patch MonacoEditor.tsx or use `editor.getModel().setLanguage(...)` in onMount.
-                    Let's update onMount to force HTML language for this instance.
-                */}
-                {/* 
-                   Wait, `MonacoEditor.tsx` as provided earlier:
-                   `defaultLanguage="json"` is hardcoded.
-                   Since I can't easily change the prop without editing MonacoEditor (which I can do),
-                   I'll rely on the `onMount` to set language.
-                */}
             </div>
         )}
 
@@ -224,13 +212,6 @@ const HtmlViewer: React.FC<HtmlViewerProps> = ({ value, onChange }) => {
           </div>
         )}
       </div>
-      
-      {/* Hidden language switcher logic: MonacoEditor component prop injection would be cleaner, 
-          but for now I will use useEffect on mount ref to switch language if possible 
-          or just modify MonacoEditor.tsx.
-          Actually, let's modify MonacoEditor.tsx to accept language prop. 
-          See separate file change below.
-      */}
     </div>
   );
 };

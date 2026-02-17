@@ -203,7 +203,7 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ initialValue, onValue
             
             {!input && !error && <span className="text-xs text-gray-400">Paste or Drop File</span>}
           </div>
-          <div className="flex-1 relative">
+          <div className="flex-1 relative overflow-hidden">
             <MonacoEditor 
               value={input}
               onChange={(val) => setInput(val || '')}
@@ -229,7 +229,7 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ initialValue, onValue
            <div className="flex-none px-3 py-2 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{format} Output</span>
            </div>
-           <div className="flex-1 relative">
+           <div className="flex-1 relative overflow-hidden">
              <MonacoEditor 
                 value={output}
                 onChange={() => {}} // Read only effectively

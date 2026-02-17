@@ -522,7 +522,7 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
               className={`flex flex-col relative h-full group ${isSplitView ? 'w-1/2 border-r border-gray-200 dark:border-gray-700' : 'w-full'}`}
               onClick={() => setActivePane('editor')}
             >
-              <div className="flex-1 min-h-0 relative">
+              <div className="flex-1 min-h-0 relative overflow-hidden">
                 <MonacoEditor 
                   value={value} 
                   onChange={(val) => onChange(val || '')} 

@@ -78,7 +78,7 @@ const SecurityAnalysis: React.FC<{ warnings: SecurityWarning[], status: Validati
   if (warnings.length === 0 && status !== 'invalid') return null;
 
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-dark-secondary">
+    <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-dark-secondary shrink-0">
       <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
         <Shield size={16} className="text-gray-500" />
         <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">Security Analysis</h3>
@@ -146,7 +146,7 @@ const Timeline: React.FC<{ iat?: number, nbf?: number, exp?: number }> = ({ iat,
   const formatDate = (ts: number) => new Date(ts * 1000).toLocaleDateString();
 
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-dark-secondary mt-4">
+    <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-dark-secondary shrink-0">
        <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
         <Clock size={16} className="text-gray-500" />
         <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">Token Timeline</h3>
@@ -540,14 +540,14 @@ const JwtDecoder: React.FC<JwtDecoderProps> = ({
   };
 
   const renderJsonEditors = () => (
-    <div className="flex flex-col gap-4 h-full">
+    <div className="flex flex-col gap-4 xl:h-full w-full">
          {/* Header */}
-         <div className={`flex-[0.8] flex flex-col h-40 md:h-auto rounded-xl border ${headerError ? 'border-red-500' : 'border-red-200 dark:border-red-900/50'} bg-white dark:bg-dark-secondary shadow-sm overflow-hidden transition-colors`}>
+         <div className={`flex-1 flex flex-col h-64 md:h-auto rounded-xl border ${headerError ? 'border-red-500' : 'border-red-200 dark:border-red-900/50'} bg-white dark:bg-dark-secondary shadow-sm overflow-hidden transition-colors`}>
             <div className="flex-none px-3 py-2 bg-red-50 dark:bg-red-900/10 border-b border-red-100 dark:border-red-900/30 flex justify-between items-center">
               <span className="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-wider">Header</span>
               {headerError && <span className="text-xs text-red-500 font-medium truncate max-w-[150px]" title={headerError}>{headerError}</span>}
             </div>
-            <div className="flex-1 relative min-h-[100px]">
+            <div className="flex-1 relative min-h-[120px] overflow-hidden">
                 <MonacoEditor 
                     value={headerJson}
                     onChange={(val) => setHeaderJson(val || '{}')}
@@ -558,12 +558,12 @@ const JwtDecoder: React.FC<JwtDecoderProps> = ({
          </div>
 
          {/* Payload */}
-         <div className={`flex-1 flex flex-col h-40 md:h-auto rounded-xl border ${payloadError ? 'border-purple-500' : 'border-purple-200 dark:border-purple-900/50'} bg-white dark:bg-dark-secondary shadow-sm overflow-hidden transition-colors`}>
+         <div className={`flex-[1.5] flex flex-col h-64 md:h-auto rounded-xl border ${payloadError ? 'border-purple-500' : 'border-purple-200 dark:border-purple-900/50'} bg-white dark:bg-dark-secondary shadow-sm overflow-hidden transition-colors`}>
             <div className="flex-none px-3 py-2 bg-purple-50 dark:bg-purple-900/10 border-b border-purple-100 dark:border-purple-900/30 flex justify-between items-center">
               <span className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">Payload</span>
               {payloadError && <span className="text-xs text-red-500 font-medium truncate max-w-[150px]" title={payloadError}>{payloadError}</span>}
             </div>
-            <div className="flex-1 relative min-h-[150px]">
+            <div className="flex-1 relative min-h-[150px] overflow-hidden">
                 <MonacoEditor 
                     value={payloadJson}
                     onChange={(val) => setPayloadJson(val || '{}')}
@@ -576,7 +576,7 @@ const JwtDecoder: React.FC<JwtDecoderProps> = ({
   );
 
   const renderConfigAndAnalysis = () => (
-      <div className="flex flex-col gap-6 h-full overflow-y-auto">
+      <div className="flex flex-col gap-6 w-full">
           {/* Verification / Signature Config */}
           <div className="rounded-xl border border-blue-200 dark:border-blue-900/50 bg-white dark:bg-dark-secondary shadow-sm overflow-hidden shrink-0">
              <div className="px-4 py-3 bg-blue-50 dark:bg-blue-900/10 border-b border-blue-100 dark:border-blue-900/30 flex justify-between items-center">
@@ -778,12 +778,13 @@ const JwtDecoder: React.FC<JwtDecoderProps> = ({
          </div>
       </div>
 
-      <div className="flex-1 flex flex-col xl:flex-row gap-6 min-h-0">
+      <div className="flex-1 min-h-0 overflow-y-auto xl:overflow-hidden">
+        <div className="flex flex-col xl:flex-row gap-6 h-full">
         
         {/* LEFT COLUMN */}
-        <div className={`flex-1 flex flex-col gap-4 min-h-0 ${mode === 'decode' ? 'xl:max-w-[40%]' : ''}`}>
+        <div className={`flex flex-col gap-4 ${mode === 'decode' ? 'xl:w-5/12 xl:h-full' : 'xl:w-1/2 xl:h-full'}`}>
            {mode === 'decode' ? (
-               <div className="flex-1 flex flex-col min-h-0 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-dark-secondary shadow-sm overflow-hidden relative group">
+               <div className="flex-1 flex flex-col min-h-[300px] xl:min-h-0 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-dark-secondary shadow-sm overflow-hidden relative group">
                   <div className="flex-none px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                      <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">Encoded Token</h3>
                      <div className="flex gap-2">
@@ -828,16 +829,16 @@ const JwtDecoder: React.FC<JwtDecoderProps> = ({
 
 
         {/* RIGHT COLUMN */}
-        <div className={`flex-1 flex flex-col gap-6 min-h-0 ${mode === 'encode' ? 'xl:max-w-[40%]' : ''}`}>
+        <div className={`flex flex-col gap-6 ${mode === 'decode' ? 'xl:w-7/12 xl:h-full xl:overflow-y-auto p-1' : 'xl:w-1/2 xl:h-full xl:overflow-y-auto p-1'}`}>
           {mode === 'decode' ? (
               <>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-64 xl:h-auto shrink-0">
-                    {/* Re-use editor render logic but for Decode mode split */}
-                    <div className="flex flex-col h-full rounded-xl border border-red-200 dark:border-red-900/50 bg-white dark:bg-dark-secondary shadow-sm overflow-hidden">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0">
+                    {/* Header Editor */}
+                    <div className="flex flex-col h-[200px] rounded-xl border border-red-200 dark:border-red-900/50 bg-white dark:bg-dark-secondary shadow-sm overflow-hidden">
                         <div className="flex-none px-3 py-2 bg-red-50 dark:bg-red-900/10 border-b border-red-100 dark:border-red-900/30">
                           <span className="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-wider">Header</span>
                         </div>
-                        <div className="flex-1 relative">
+                        <div className="flex-1 relative overflow-hidden">
                             <MonacoEditor 
                                 value={headerJson}
                                 onChange={(val) => setHeaderJson(val || '{}')}
@@ -847,11 +848,12 @@ const JwtDecoder: React.FC<JwtDecoderProps> = ({
                         </div>
                     </div>
 
-                    <div className="flex flex-col h-full rounded-xl border border-purple-200 dark:border-purple-900/50 bg-white dark:bg-dark-secondary shadow-sm overflow-hidden">
+                    {/* Payload Editor */}
+                    <div className="flex flex-col h-[200px] rounded-xl border border-purple-200 dark:border-purple-900/50 bg-white dark:bg-dark-secondary shadow-sm overflow-hidden">
                         <div className="flex-none px-3 py-2 bg-purple-50 dark:bg-purple-900/10 border-b border-purple-100 dark:border-purple-900/30">
                           <span className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">Payload</span>
                         </div>
-                        <div className="flex-1 relative">
+                        <div className="flex-1 relative overflow-hidden">
                             <MonacoEditor 
                                 value={payloadJson}
                                 onChange={(val) => setPayloadJson(val || '{}')}
@@ -861,6 +863,8 @@ const JwtDecoder: React.FC<JwtDecoderProps> = ({
                         </div>
                     </div>
                  </div>
+                 
+                 {/* Config & Analysis */}
                  {renderConfigAndAnalysis()}
               </>
           ) : (
@@ -869,6 +873,7 @@ const JwtDecoder: React.FC<JwtDecoderProps> = ({
           )}
         </div>
 
+        </div>
       </div>
     </div>
   );

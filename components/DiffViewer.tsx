@@ -457,7 +457,7 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 relative group">
+      <div className="flex-1 relative group overflow-hidden">
         <DiffEditor
           height="100%"
           language="json"

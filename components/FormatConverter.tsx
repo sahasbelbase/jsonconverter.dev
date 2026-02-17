@@ -36,6 +36,21 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ initialValue, onValue
       const parsed = JSON.parse(input);
       setError(null);
       setErrorLoc(null);
+
+      // Format-Specific Validation
+      if (format === 'TOML') {
+         if (Array.isArray(parsed)) {
+            throw new Error("Invalid TOML: Root must be an Object (Key-Value pairs), not an Array.");
+         }
+         if (parsed === null || typeof parsed !== 'object') {
+            throw new Error("Invalid TOML: Root must be an Object, not a primitive value.");
+         }
+      }
+      
+      // XML Validation: Keys must not be empty if possible, but our converter handles sanitization.
+      // However, check for completely empty keys or invalid structures if necessary.
+      // For this app, strict JSON parsing is the main validation.
+
       switch (format) {
         case 'YAML':
           setOutput(toYAML(parsed));
@@ -59,6 +74,10 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ initialValue, onValue
          setErrorLoc(getErrorLocation(input, pos));
       } else {
          setErrorLoc(null);
+      }
+      // If conversion fails but parse succeeded (e.g. TOML validation), clear output
+      if (!e.message.includes("JSON")) {
+          setOutput('');
       }
     }
   }, [input, format, onValueChange]);
@@ -171,9 +190,9 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ initialValue, onValue
             
             {/* Error Display */}
             {error && (
-               <div className="flex items-center gap-2 text-xs text-red-500 overflow-hidden">
+               <div className="flex items-center gap-2 text-xs text-red-500 overflow-hidden" title={error}>
                  <AlertCircle size={12} className="shrink-0" />
-                 <span className="font-bold whitespace-nowrap">Invalid JSON</span>
+                 <span className="font-bold whitespace-nowrap">Invalid Input</span>
                  {errorLoc && (
                     <span className="bg-red-100 dark:bg-red-900/50 px-1 rounded whitespace-nowrap">
                       Ln {errorLoc.line}, Col {errorLoc.column}
@@ -215,6 +234,7 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ initialValue, onValue
                 value={output}
                 onChange={() => {}} // Read only effectively
                 theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
+                language={format === 'XML' ? 'xml' : format === 'YAML' ? 'yaml' : 'plaintext'}
              />
            </div>
         </div>

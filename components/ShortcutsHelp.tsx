@@ -12,6 +12,8 @@ const ShortcutsHelp: React.FC<ShortcutsHelpProps> = ({ isOpen, onClose }) => {
   const shortcuts = [
     { keys: ['Ctrl/Cmd', 'Enter'], description: 'Process / Convert JSON' },
     { keys: ['Ctrl/Cmd', 'F'], description: 'Search (Context aware)' },
+    { keys: ['Ctrl/Cmd', 'C'], description: 'Copy All (if no selection)' },
+    { keys: ['Ctrl/Cmd', 'X'], description: 'Clear All (if no selection)' },
     { keys: ['Esc'], description: 'Close Search / Modals' },
   ];
 

@@ -8,6 +8,8 @@ import Sidebar from './components/Sidebar';
 import DiffViewer from './components/DiffViewer';
 import FormatConverter from './components/FormatConverter';
 import HtmlViewer from './components/HtmlViewer';
+import Tokenizer from './components/Tokenizer';
+import JwtDecoder from './components/JwtDecoder';
 import { parseAndFlattenJSON } from './utils/jsonUtils';
 import { exportToCSV, exportToExcel } from './utils/exportUtils';
 import { AlertMessage, ParsedData, ViewMode, ToolMode } from './types';
@@ -33,6 +35,12 @@ function App() {
 
   // -- State: HTML Tool --
   const [htmlInput, setHtmlInput] = useState<string>('');
+  
+  // -- State: JWT Tool --
+  const [jwtToken, setJwtToken] = useState<string>('');
+  const [jwtSecret, setJwtSecret] = useState<string>('');
+  const [jwtPublicKey, setJwtPublicKey] = useState<string>('');
+  const [jwtPrivateKey, setJwtPrivateKey] = useState<string>('');
 
   // -- State: Global --
   const [activeTool, setActiveTool] = useState<ToolMode>(ToolMode.CONVERTER);
@@ -58,6 +66,18 @@ function App() {
       const savedHtmlInput = localStorage.getItem('htmlInput');
       if (savedHtmlInput) setHtmlInput(savedHtmlInput);
       
+      const savedJwtToken = localStorage.getItem('jwtToken');
+      if (savedJwtToken) setJwtToken(savedJwtToken);
+      
+      const savedJwtSecret = localStorage.getItem('jwtSecret');
+      if (savedJwtSecret) setJwtSecret(savedJwtSecret);
+
+      const savedJwtPublicKey = localStorage.getItem('jwtPublicKey');
+      if (savedJwtPublicKey) setJwtPublicKey(savedJwtPublicKey);
+
+      const savedJwtPrivateKey = localStorage.getItem('jwtPrivateKey');
+      if (savedJwtPrivateKey) setJwtPrivateKey(savedJwtPrivateKey);
+      
       const savedTool = localStorage.getItem('activeTool');
       if (savedTool && Object.values(ToolMode).includes(savedTool as ToolMode)) {
         setActiveTool(savedTool as ToolMode);
@@ -77,11 +97,15 @@ function App() {
         if (diffModified.length < 5_000_000) localStorage.setItem('diffModified', diffModified);
         if (formatInput.length < 5_000_000) localStorage.setItem('formatInput', formatInput);
         if (htmlInput.length < 5_000_000) localStorage.setItem('htmlInput', htmlInput);
+        if (jwtToken.length < 100_000) localStorage.setItem('jwtToken', jwtToken);
+        if (jwtSecret.length < 10_000) localStorage.setItem('jwtSecret', jwtSecret);
+        if (jwtPublicKey.length < 10_000) localStorage.setItem('jwtPublicKey', jwtPublicKey);
+        if (jwtPrivateKey.length < 10_000) localStorage.setItem('jwtPrivateKey', jwtPrivateKey);
         localStorage.setItem('activeTool', activeTool);
       } catch (e) { /* Ignore quota */ }
     }, 1000);
     return () => clearTimeout(timer);
-  }, [jsonInput, diffOriginal, diffModified, formatInput, htmlInput, activeTool]);
+  }, [jsonInput, diffOriginal, diffModified, formatInput, htmlInput, jwtToken, jwtSecret, jwtPublicKey, jwtPrivateKey, activeTool]);
 
   // Clear errors when switching tools
   useEffect(() => {
@@ -186,6 +210,8 @@ function App() {
       case ToolMode.DIFF: return 'Diff Viewer';
       case ToolMode.FORMAT: return 'Convert JSON to Other Formats';
       case ToolMode.HTML: return 'HTML Viewer & Beautifier';
+      case ToolMode.TOKENIZER: return 'Token Counter & Cost Estimator';
+      case ToolMode.JWT: return 'JWT Decoder & Verifier';
       default: return 'JSON Tool';
     }
   };
@@ -330,6 +356,25 @@ function App() {
                 <HtmlViewer 
                    value={htmlInput}
                    onChange={setHtmlInput}
+                />
+              </div>
+
+              {/* TOKENIZER TOOL */}
+              <div className={`flex-1 flex flex-col min-h-0 ${activeTool === ToolMode.TOKENIZER ? 'block' : 'hidden'}`}>
+                <Tokenizer />
+              </div>
+              
+              {/* JWT TOOL */}
+              <div className={`flex-1 flex flex-col min-h-0 ${activeTool === ToolMode.JWT ? 'block' : 'hidden'}`}>
+                <JwtDecoder 
+                  initialToken={jwtToken}
+                  onTokenChange={setJwtToken}
+                  initialSecret={jwtSecret}
+                  onSecretChange={setJwtSecret}
+                  initialPublicKey={jwtPublicKey}
+                  onPublicKeyChange={setJwtPublicKey}
+                  initialPrivateKey={jwtPrivateKey}
+                  onPrivateKeyChange={setJwtPrivateKey}
                 />
               </div>
 

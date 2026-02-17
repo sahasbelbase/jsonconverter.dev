@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileJson, GitCompareArrows, FileCode2, Code } from 'lucide-react';
+import { FileJson, GitCompareArrows, FileCode2, Code, Calculator, Shield } from 'lucide-react';
 import { ToolMode } from '../types';
 
 interface SidebarProps {
@@ -22,6 +22,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTool, onSelect }) => {
       desc: 'JSON to XML/YAML'
     },
     {
+      id: ToolMode.JWT,
+      icon: <Shield size={24} />,
+      label: 'JWT Decoder',
+      desc: 'Debug & Verify'
+    },
+    {
       id: ToolMode.HTML,
       icon: <Code size={24} />,
       label: 'HTML Viewer',
@@ -32,6 +38,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTool, onSelect }) => {
       icon: <GitCompareArrows size={24} />,
       label: 'Diff',
       desc: 'Compare Text'
+    },
+    {
+      id: ToolMode.TOKENIZER,
+      icon: <Calculator size={24} />,
+      label: 'Tokenizer',
+      desc: 'Count Tokens'
     }
   ];
 

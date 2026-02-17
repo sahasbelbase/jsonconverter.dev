@@ -16,7 +16,9 @@ export enum ToolMode {
   CONVERTER = 'CONVERTER',
   DIFF = 'DIFF',
   FORMAT = 'FORMAT',
-  HTML = 'HTML'
+  HTML = 'HTML',
+  TOKENIZER = 'TOKENIZER',
+  JWT = 'JWT'
 }
 
 export type AlertType = 'success' | 'error' | 'info';

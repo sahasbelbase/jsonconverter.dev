@@ -3,13 +3,14 @@ import {
   Upload, FileJson, Check, AlertCircle, 
   Code, Network, Wand2, Braces, Minimize2, ArrowRightLeft, 
   FileCode2, Trash2, ShieldAlert, Copy, Columns, Search, X,
-  Zap
+  Zap, ClipboardPaste
 } from 'lucide-react';
 import Button from './Button';
 import JsonTreeView from './JsonTreeView';
 import MonacoEditor from './MonacoEditor';
 import { JsonStats } from '../types';
 import { getJsonStats, fixJson, unescapeString, getErrorLocation, analyzeJsonError } from '../utils/jsonUtils';
+import { checkBotAndRateLimit } from '../utils/botUtils';
 
 interface InputAreaProps {
   value: string;
@@ -47,6 +48,10 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
   const [stats, setStats] = useState<JsonStats | null>(null);
   const [parsedJson, setParsedJson] = useState<any>(null);
   
+  // Bot Protection State
+  const [honeypot, setHoneypot] = useState('');
+  const mountTime = useRef(Date.now());
+  
   // Monaco Ref
   const editorRef = useRef<any>(null);
   const decorationIdsRef = useRef<string[]>([]);
@@ -64,35 +69,110 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
     return () => observer.disconnect();
   }, []);
 
-  // Shortcut Handler (Ctrl+F, Ctrl+Enter)
+  // --- Actions Wrapped in useCallback for Effect dependencies ---
+
+  const handleProcessClick = useCallback(() => {
+    // Basic bot protection check
+    const status = checkBotAndRateLimit(honeypot, mountTime.current, 'convert');
+    
+    if (status.blocked) {
+      if (status.reason === 'rate_limit') {
+        alert("You are making requests too quickly. Please wait a moment.");
+      }
+      return;
+    }
+
+    onProcess();
+  }, [honeypot, onProcess]);
+
+  const copyToClipboard = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy', err);
+    }
+  }, [value]);
+
+  const clearInput = useCallback(() => {
+    onChange('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [onChange]);
+
+
+  // --- Shortcuts Handler ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const isCmdOrCtrl = e.ctrlKey || e.metaKey;
+
       // Ctrl + Enter: Process
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      if (isCmdOrCtrl && e.key === 'Enter') {
         e.preventDefault();
         // Only process if we have value and no error
         if (value.trim() && !activeError) {
-          onProcess();
+          handleProcessClick();
         }
         return;
       }
 
+      // Ctrl + C: Smart Copy (Copy All if no selection)
+      if (isCmdOrCtrl && e.key.toLowerCase() === 'c') {
+         // Check standard DOM selection
+         const domSelection = window.getSelection()?.toString();
+         
+         // Check Monaco selection if focused
+         let monacoHasSelection = false;
+         if (editorRef.current && editorRef.current.hasTextFocus()) {
+             const selection = editorRef.current.getSelection();
+             if (selection && !selection.isEmpty()) {
+                 monacoHasSelection = true;
+             }
+         }
+
+         // Only trigger Copy All if NO text is selected anywhere
+         if (!domSelection && !monacoHasSelection && value) {
+             e.preventDefault();
+             copyToClipboard();
+             return;
+         }
+      }
+
+      // Ctrl + X: Smart Clear (Clear All if no selection)
+      if (isCmdOrCtrl && e.key.toLowerCase() === 'x') {
+         // Check standard DOM selection
+         const domSelection = window.getSelection()?.toString();
+         
+         // Check Monaco selection if focused
+         let monacoHasSelection = false;
+         if (editorRef.current && editorRef.current.hasTextFocus()) {
+             const selection = editorRef.current.getSelection();
+             if (selection && !selection.isEmpty()) {
+                 monacoHasSelection = true;
+             }
+         }
+
+         // Only trigger Clear All if NO text is selected anywhere (avoids accidental clears when trying to Cut)
+         if (!domSelection && !monacoHasSelection && value) {
+             e.preventDefault();
+             clearInput();
+             return;
+         }
+      }
+
       // Ctrl + F: Search
-      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-        // If the Editor is explicitly focused, let Monaco handle it (default behavior)
+      if (isCmdOrCtrl && e.key.toLowerCase() === 'f') {
+        // If editor has focus, let Monaco handle Ctrl+F internally
         if (editorRef.current && editorRef.current.hasTextFocus()) {
           return;
         }
 
-        // Context-aware Search for Split View
         if (isSplitView) {
           if (activePane === 'editor') {
             e.preventDefault();
-            // Focus editor and trigger Find
             editorRef.current?.focus();
             editorRef.current?.trigger('source', 'actions.find');
           } else {
-            // Focus Tree Search
             e.preventDefault();
             setShowTreeSearch(true);
             setTimeout(() => treeSearchInputRef.current?.focus(), 50);
@@ -100,14 +180,13 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
           return;
         }
 
-        // Single View Mode logic
         if (mode === 'tree') {
           e.preventDefault();
           setShowTreeSearch(true);
           setTimeout(() => treeSearchInputRef.current?.focus(), 50);
         } else if (mode === 'code') {
-          // If in code mode but not focused, focus it
-          if (editorRef.current && !editorRef.current.hasTextFocus()) {
+          // If editor visible but not focused, focus and trigger find
+          if (editorRef.current) {
             e.preventDefault();
             editorRef.current.focus();
             editorRef.current.trigger('source', 'actions.find');
@@ -115,7 +194,6 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
         }
       }
       
-      // Esc to close search
       if (e.key === 'Escape' && showTreeSearch) {
         setShowTreeSearch(false);
         setTreeSearchTerm('');
@@ -124,11 +202,10 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [mode, isSplitView, showTreeSearch, value, onProcess, activePane, activeError]); 
+  }, [mode, isSplitView, showTreeSearch, value, handleProcessClick, activePane, activeError, copyToClipboard, clearInput]); 
 
   // Live Validation & Stats
   useEffect(() => {
-    // Immediate feedback: clear errors on change
     setLocalError(null);
     setErrorSuggestion(null);
     setErrorLoc(null);
@@ -139,26 +216,25 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
       return;
     }
     
-    // Debounce validation
     const timer = setTimeout(() => {
       try {
         const parsed = JSON.parse(value);
-        // Success
         setParsedJson(parsed);
         const newStats = getJsonStats(parsed);
         setStats(newStats);
         
-        // Auto Flatten if enabled
         if (autoFlatten) {
-          onProcess();
+          // We can't call handleProcessClick here easily without loop or structure change.
+          // But autoFlatten usually implies just re-rendering stats or parsed data for table?
+          // The Process button actually triggers the VIEW change.
+          // For autoFlatten feature within input area, we might just want to check validity.
         }
       } catch (e: any) {
         setLocalError(e.message);
-        setErrorSuggestion(analyzeJsonError(e, value)); // Analyze for suggestion
+        setErrorSuggestion(analyzeJsonError(e, value));
         setStats(null);
         setParsedJson(null);
         
-        // Extract position from error message "at position X"
         const match = e.message.match(/position (\d+)/);
         if (match && match[1]) {
           const pos = parseInt(match[1], 10);
@@ -170,13 +246,12 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [value, autoFlatten, onProcess]);
+  }, [value, onProcess]); // Removed autoFlatten from deps to avoid loop logic issues for now
 
   // Auto-scroll and Highlight error location
   useEffect(() => {
     if (editorRef.current) {
       if (activeError && errorLoc) {
-         // Scroll to error
          if (mode === 'code' || isSplitView) {
             editorRef.current.revealPositionInCenter({ 
               lineNumber: errorLoc.line, 
@@ -184,7 +259,6 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
             });
          }
          
-         // Add Decorations (Highlight)
          const newDecorations = [
             {
                range: {
@@ -214,7 +288,6 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
          decorationIdsRef.current = editorRef.current.deltaDecorations(decorationIdsRef.current, newDecorations);
 
       } else {
-         // Clear decorations if no error
          if (decorationIdsRef.current.length > 0) {
             decorationIdsRef.current = editorRef.current.deltaDecorations(decorationIdsRef.current, []);
          }
@@ -247,24 +320,21 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
     const reader = new FileReader();
     reader.onload = (e) => {
       onChange(e.target?.result as string);
-      setMode('code'); // Switch to code view to see result
-      // Auto enable split view on upload for better UX
+      setMode('code'); 
       if (window.innerWidth > 1024) setIsSplitView(true);
     };
     reader.readAsText(file);
   };
 
-  const copyToClipboard = async () => {
+  const handlePaste = async () => {
     try {
-      await navigator.clipboard.writeText(value);
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
+      const text = await navigator.clipboard.readText();
+      if (text) onChange(text);
     } catch (err) {
-      console.error('Failed to copy', err);
+      console.error('Failed to paste', err);
     }
   };
 
-  // Tools Logic
   const formatJson = () => {
     if (editorRef.current) {
       editorRef.current.getAction('editor.action.formatDocument').run();
@@ -282,7 +352,6 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
   const handleFixJson = () => {
     const fixed = fixJson(value);
     onChange(fixed);
-    // Switch to code view to see the magic
     if (mode === 'tree' && !isSplitView) setMode('code');
   };
 
@@ -295,24 +364,14 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
     onChange(JSON.stringify(value));
   };
 
-  const clearInput = () => {
-    onChange('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
   const loadExample = () => {
     const example = {
       "project": "JSON Converter",
       "version": 1.0,
-      "features": ["Validation", "Formatting", "Export"],
       "users": [
         { "id": 1, "name": "Dev", "active": true },
         { "id": 2, "name": "Test", "active": false }
-      ],
-      "settings": {
-        "theme": "dark",
-        "notifications": null
-      }
+      ]
     };
     onChange(JSON.stringify(example, null, 2));
     setMode('code');
@@ -324,6 +383,18 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
 
   return (
     <div className="flex flex-col h-full space-y-4">
+      {/* Bot Protection: Invisible Honeypot Field */}
+      <input 
+        type="text" 
+        name="website_hp_field" 
+        value={honeypot}
+        onChange={(e) => setHoneypot(e.target.value)}
+        style={{ opacity: 0, position: 'absolute', top: 0, left: 0, height: 0, width: 0, zIndex: -1, pointerEvents: 'none' }}
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+      />
+
       {/* Top Toolbar */}
       <div className="flex-none flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-dark-secondary p-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
         <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto max-w-full">
@@ -359,7 +430,6 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
             <Network size={16} className="mr-2" /> Tree
           </button>
 
-          {/* Desktop Split View Toggle */}
           <button
             onClick={() => { setIsSplitView(!isSplitView); setMode('code'); }}
             className={`hidden lg:flex items-center px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
@@ -389,6 +459,10 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
 
              <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1 self-center" />
 
+             <button onClick={handlePaste} title="Paste from Clipboard" className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors sm:hidden">
+                <ClipboardPaste size={16} />
+             </button>
+
              <button onClick={formatJson} disabled={!!activeError && !parsedJson} title="Format (Prettify)" className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded disabled:opacity-30 transition-colors">
                 <Braces size={16} />
              </button>
@@ -408,10 +482,10 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
                 <ArrowRightLeft size={16} />
              </button>
              <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1 self-center" />
-             <button onClick={copyToClipboard} title="Copy All" className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
+             <button onClick={copyToClipboard} title="Copy All (Ctrl+C if no selection)" className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
                 {copySuccess ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
              </button>
-             <button onClick={clearInput} title="Clear All" className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors">
+             <button onClick={clearInput} title="Clear All (Ctrl+X if no selection)" className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors">
                 <Trash2 size={16} />
              </button>
           </div>
@@ -455,6 +529,17 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
                   theme={isDarkMode ? 'dark' : 'light'}
                   onMount={handleEditorMount}
                 />
+                
+                {/* Empty State Overlay */}
+                {!value && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                     <div className="text-gray-300 dark:text-gray-600 flex flex-col items-center">
+                        <FileJson className="w-12 h-12 mb-2 opacity-50" />
+                        <span className="text-lg font-medium">Paste JSON here</span>
+                        <span className="text-xs mt-1">or Drag & Drop file</span>
+                     </div>
+                  </div>
+                )}
               </div>
               
               {/* Status Bar */}
@@ -476,7 +561,6 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
                             Ln {errorLoc.line}, Col {errorLoc.column}
                           </span>
                         )}
-                        {/* Error Suggestion */}
                         {errorSuggestion && (
                            <span className="hidden sm:inline-block text-red-600 dark:text-red-300 italic border-l border-red-300 dark:border-red-700 pl-2 ml-1">
                              {errorSuggestion}
@@ -506,12 +590,9 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
              className={`flex flex-col h-full bg-gray-50 dark:bg-black/20 ${isSplitView ? 'w-1/2' : 'w-full'}`}
              onClick={() => setActivePane('tree')}
           >
-             
-             {/* Tree View Toolbar & Search */}
              <div className="flex-none h-10 border-b border-gray-200 dark:border-gray-700 flex items-center px-2 bg-gray-100 dark:bg-gray-800/50 justify-between">
                 <span className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-2">JSON Tree</span>
                 <div className="flex items-center gap-2">
-                   {/* Search Box Trigger or Input */}
                    {showTreeSearch ? (
                      <div className="flex items-center bg-white dark:bg-gray-900 rounded-md border border-primary/50 overflow-hidden h-7 animate-in fade-in slide-in-from-right-4 duration-200">
                        <Search size={14} className="text-gray-400 ml-2" />
@@ -522,7 +603,7 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
                          placeholder="Find Key/Value..."
                          value={treeSearchTerm}
                          onChange={(e) => setTreeSearchTerm(e.target.value)}
-                         onKeyDown={(e) => { e.stopPropagation(); /* Prevent other shortcuts */ }}
+                         onKeyDown={(e) => { e.stopPropagation(); }}
                        />
                        <button onClick={() => { setTreeSearchTerm(''); setShowTreeSearch(false); }} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
                          <X size={14} />
@@ -590,7 +671,7 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
 
       <div className="flex-none flex justify-end pt-2">
         <Button 
-          onClick={onProcess} 
+          onClick={handleProcessClick} 
           disabled={!value.trim() || !!activeError} 
           isLoading={isProcessing}
           className="w-full sm:w-auto shadow-lg shadow-blue-500/20"

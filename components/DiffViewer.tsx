@@ -33,12 +33,30 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
   const [jumpInput, setJumpInput] = useState('');
   
+  // Manual layout handling
+  const [diffEditorInstance, setDiffEditorInstance] = useState<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   // Store active widgets to clean them up
   const widgetsRef = useRef<any[]>([]);
   
   // Unique URIs for this instance to scope models correctly
   const originalUri = useRef(`inmemory://diff/original-${Math.random()}`);
   const modifiedUri = useRef(`inmemory://diff/modified-${Math.random()}`);
+
+  // Manual ResizeObserver
+  useEffect(() => {
+    if (!diffEditorInstance || !containerRef.current) return;
+
+    const observer = new ResizeObserver(() => {
+      window.requestAnimationFrame(() => {
+        diffEditorInstance.layout();
+      });
+    });
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [diffEditorInstance]);
 
   // Helper to construct a valid Monaco Range
   const getMonacoRange = (startLine: number, endLine: number, model: any) => {
@@ -212,6 +230,7 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
 
   const handleEditorMount = (editor: any, monaco: any) => {
     diffEditorRef.current = editor;
+    setDiffEditorInstance(editor);
 
     const update = () => {
         const lineChanges = editor.getLineChanges() || [];
@@ -457,7 +476,7 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 relative group overflow-hidden">
+      <div className="flex-1 relative group overflow-hidden" ref={containerRef}>
         <DiffEditor
           height="100%"
           language="json"
@@ -475,7 +494,8 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
             fontSize: 13,
             diffWordWrap: 'off' as const,
             padding: { top: 16, bottom: 16 },
-            renderOverviewRuler: false
+            renderOverviewRuler: false,
+            automaticLayout: false
           }}
         />
       </div>

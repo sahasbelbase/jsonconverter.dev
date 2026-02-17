@@ -44,13 +44,15 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
   const originalUri = useRef(`inmemory://diff/original-${Math.random()}`);
   const modifiedUri = useRef(`inmemory://diff/modified-${Math.random()}`);
 
-  // Manual ResizeObserver
+  // Fix ResizeObserver Error: Manual Layout
   useEffect(() => {
     if (!diffEditorInstance || !containerRef.current) return;
 
     const observer = new ResizeObserver(() => {
       window.requestAnimationFrame(() => {
-        diffEditorInstance.layout();
+        if (diffEditorInstance) {
+          diffEditorInstance.layout();
+        }
       });
     });
 
@@ -110,13 +112,9 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
         }], () => null);
     } else {
         // Content in Original -> Insert or Replace in Modified
-        // Logic handles both insertion (empty modified range) and replacement automatically via range
         modifiedModel.pushEditOperations([], [{
             range: range,
             text: text + (change.modifiedEndLineNumber < change.modifiedStartLineNumber && change.modifiedStartLineNumber > 1 ? '\n' : '')
-            // Note: If inserting a block, we might need a newline if we are appending. 
-            // Monaco's pushEditOperations usually handles text insertion well, but block insertions need care.
-            // Simplified: Just use the text.
         }], () => null);
     }
   }, []);
@@ -168,20 +166,27 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
     const modifiedEditor = diffEditorRef.current?.getModifiedEditor();
     if (!modifiedEditor) return;
 
+    const modifiedModel = modifiedEditor.getModel();
+    if (!modifiedModel) return;
+
     currentChanges.forEach((change, idx) => {
-        // Position at the start of the change in modified editor
-        // If modified is deletion (start > end), use start line
-        const line = Math.max(1, change.modifiedStartLineNumber);
+        // Validate line number to avoid out of bounds
+        const lineCount = modifiedModel.getLineCount();
+        const line = Math.min(Math.max(1, change.modifiedStartLineNumber), lineCount);
         
+        // Fix: Position widget at the END of the line + Spacing to prevent obscuring text
+        const maxCol = modifiedModel.getLineMaxColumn(line);
+
         const widgetId = `diff.action.widget.${idx}`;
         const domNode = document.createElement('div');
-        domNode.className = 'flex items-center gap-0.5 bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-600 rounded-[4px] px-1 py-0.5 z-20 select-none';
+        
+        // Semi-transparent style with hover effect to minimize visual interference
+        domNode.className = 'flex items-center gap-0.5 bg-blue-50/90 dark:bg-gray-800/90 backdrop-blur-sm shadow-sm border border-blue-200 dark:border-gray-600 rounded px-1.5 py-0.5 z-20 select-none opacity-60 hover:opacity-100 transition-opacity ml-4';
         domNode.style.fontSize = '10px';
-        domNode.style.marginTop = '-22px'; // Shift up to sit above the line or near it
         
         // --- Button: L -> R ---
         const btnL2R = document.createElement('button');
-        btnL2R.className = 'px-1.5 py-0.5 hover:bg-blue-50 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded flex items-center gap-1 transition-colors cursor-pointer font-medium';
+        btnL2R.className = 'px-1 py-0.5 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded flex items-center gap-1 transition-colors cursor-pointer font-bold';
         btnL2R.title = 'Apply Original to Modified';
         btnL2R.innerHTML = `<span>Apply</span><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`;
         btnL2R.onclick = (e) => {
@@ -192,7 +197,7 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
 
         // --- Button: R -> L ---
         const btnR2L = document.createElement('button');
-        btnR2L.className = 'px-1.5 py-0.5 hover:bg-blue-50 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded flex items-center gap-1 transition-colors cursor-pointer font-medium';
+        btnR2L.className = 'px-1 py-0.5 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded flex items-center gap-1 transition-colors cursor-pointer font-bold';
         btnR2L.title = 'Apply Modified to Original';
         btnR2L.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg><span>Apply</span>`;
         btnR2L.onclick = (e) => {
@@ -203,9 +208,8 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
 
         domNode.appendChild(btnL2R);
         
-        // Separator
         const sep = document.createElement('div');
-        sep.className = 'w-px h-3 bg-gray-200 dark:bg-gray-600 mx-0.5';
+        sep.className = 'w-px h-3 bg-gray-300 dark:bg-gray-600 mx-1';
         domNode.appendChild(sep);
         
         domNode.appendChild(btnR2L);
@@ -216,9 +220,9 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
             getPosition: () => ({
                 position: {
                     lineNumber: line,
-                    column: 1
+                    column: maxCol // Position at end of line
                 },
-                preference: [0] // EXACT
+                preference: [0] // EXACT position
             })
         };
         
@@ -336,7 +340,6 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
     if (valOriginal === valModified) return;
     
     // Optimistically update models for instant feedback
-    // This avoids wait time for React cycle + Monaco prop check
     originalModel.setValue(valModified);
     modifiedModel.setValue(valOriginal);
 
@@ -356,123 +359,79 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
   return (
     <div className="flex flex-col h-full bg-white dark:bg-dark-secondary rounded-xl shadow-inner overflow-hidden border border-gray-200 dark:border-gray-700">
       
-      {/* Enhanced Diff Toolbar */}
-      <div className="flex-none p-2 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex flex-col xl:flex-row justify-between items-center gap-2">
+      {/* Enhanced Diff Toolbar - Grid/Flex Layout for Title Separation */}
+      <div className="flex-none p-2 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex flex-col xl:flex-row items-center gap-2">
         
-        {/* File Names */}
-        <div className="flex items-center gap-2 w-full xl:w-auto justify-between xl:justify-start px-2">
-           <div className="flex items-center gap-1 group">
-             <input 
-               type="text" 
-               value={originalTitle}
-               onChange={(e) => onOriginalTitleChange(e.target.value)}
-               className="bg-transparent text-xs font-bold text-red-600 dark:text-red-400 outline-none w-24 sm:w-32 focus:w-48 transition-all"
-               placeholder="Original"
-             />
-             <Pencil size={10} className="text-gray-400 opacity-0 group-hover:opacity-100" />
-           </div>
-           <ArrowRight size={12} className="text-gray-400" />
-           <div className="flex items-center gap-1 group text-right">
-             <input 
-               type="text" 
-               value={modifiedTitle}
-               onChange={(e) => onModifiedTitleChange(e.target.value)}
-               className="bg-transparent text-xs font-bold text-green-600 dark:text-green-400 outline-none w-24 sm:w-32 focus:w-48 transition-all text-right"
-               placeholder="Modified"
-             />
-             <Pencil size={10} className="text-gray-400 opacity-0 group-hover:opacity-100" />
-           </div>
+        {/* Left: Original Title */}
+        <div className="flex-1 w-full xl:w-auto flex items-center justify-start min-w-0 px-2">
+             <span className="text-xs font-bold text-gray-400 mr-2 shrink-0 select-none">ORIGINAL</span>
+             <div className="relative group flex-1">
+                 <input 
+                   type="text" 
+                   value={originalTitle}
+                   onChange={(e) => onOriginalTitleChange(e.target.value)}
+                   className="bg-transparent text-xs font-bold text-red-600 dark:text-red-400 outline-none w-full truncate focus:bg-white dark:focus:bg-gray-700 rounded px-1 transition-all border border-transparent focus:border-gray-300 dark:focus:border-gray-600"
+                   placeholder="Original"
+                   title="Original File Name"
+                 />
+                 <Pencil size={10} className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 opacity-0 group-hover:opacity-100 pointer-events-none" />
+             </div>
         </div>
 
-        {/* Middle: Navigation & Context Actions */}
-        <div className="flex items-center gap-2 w-full xl:w-auto justify-center bg-white dark:bg-gray-900 rounded-lg p-1 border border-gray-200 dark:border-gray-700 shadow-sm overflow-x-auto">
+        {/* Center: Controls & Navigation */}
+        <div className="flex-none flex items-center justify-center gap-2 bg-white dark:bg-gray-900 rounded-lg p-1 border border-gray-200 dark:border-gray-700 shadow-sm mx-2">
             
-            {/* Nav Controls */}
-            <div className="flex items-center gap-0.5 shrink-0">
-                <button onClick={() => navigateToChange(0)} disabled={changes.length === 0} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-500" title="First Change">
-                    <ChevronsUp size={14} />
-                </button>
-                <button onClick={handlePrev} disabled={currentIndex <= 0} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-500" title="Previous Change">
-                    <ChevronUp size={14} />
-                </button>
-                
-                <div className="flex items-center px-2 min-w-[60px] justify-center">
-                    <span className="text-xs font-mono text-gray-500 select-none">
-                        {changes.length > 0 ? `${currentIndex + 1} / ${changes.length}` : '0 / 0'}
+            {/* Navigation */}
+            <div className="flex items-center gap-0.5">
+                <button onClick={() => navigateToChange(0)} disabled={changes.length === 0} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-gray-500" title="First Change"><ChevronsUp size={14} /></button>
+                <button onClick={handlePrev} disabled={currentIndex <= 0} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-gray-500" title="Prev Change"><ChevronUp size={14} /></button>
+                <div className="flex items-center px-1 min-w-[50px] justify-center">
+                    <span className="text-[10px] font-mono text-gray-500 select-none">
+                        {changes.length > 0 ? `${currentIndex + 1}/${changes.length}` : '0/0'}
                     </span>
                 </div>
-
-                <button onClick={handleNext} disabled={currentIndex >= changes.length - 1} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-500" title="Next Change">
-                    <ChevronDown size={14} />
-                </button>
-                <button onClick={() => navigateToChange(changes.length - 1)} disabled={changes.length === 0} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-500" title="Last Change">
-                    <ChevronsDown size={14} />
-                </button>
+                <button onClick={handleNext} disabled={currentIndex >= changes.length - 1} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-gray-500" title="Next Change"><ChevronDown size={14} /></button>
+                <button onClick={() => navigateToChange(changes.length - 1)} disabled={changes.length === 0} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-gray-500" title="Last Change"><ChevronsDown size={14} /></button>
             </div>
-
-            <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1 shrink-0"></div>
+            
+            <div className="w-px h-4 bg-gray-200 dark:bg-gray-700"></div>
 
             {/* Jump Input */}
-            <form onSubmit={handleJumpSubmit} className="flex items-center shrink-0">
-                 <MapPin size={12} className="text-gray-400 mr-1" />
+            <form onSubmit={handleJumpSubmit} className="flex items-center px-1">
                  <input 
                     type="text" 
-                    placeholder=":line or #diff" 
-                    className="w-20 text-xs bg-transparent outline-none text-gray-600 dark:text-gray-300 placeholder-gray-400"
+                    placeholder=":line" 
+                    className="w-10 text-[10px] bg-transparent outline-none text-gray-600 dark:text-gray-300 placeholder-gray-400 text-center"
                     value={jumpInput}
                     onChange={(e) => setJumpInput(e.target.value)}
-                    title="Enter line number (e.g. 10) or change number (e.g. #3)"
+                    title="Jump to line"
                  />
             </form>
 
-            <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1 shrink-0"></div>
+            <div className="w-px h-4 bg-gray-200 dark:bg-gray-700"></div>
 
-            {/* Active Change Actions (Toolbar) */}
-            <div className="flex items-center gap-1 shrink-0">
-                <button 
-                    onClick={handleApplyCurrentL2R} 
-                    disabled={currentIndex === -1}
-                    className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 dark:hover:bg-blue-900/50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                    title="Apply active change from Left to Right"
-                >
-                    Apply <ArrowRight size={10} />
-                </button>
-                <button 
-                    onClick={handleApplyCurrentR2L}
-                    disabled={currentIndex === -1}
-                    className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 dark:hover:bg-blue-900/50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                    title="Apply active change from Right to Left"
-                >
-                    <ArrowLeft size={10} /> Apply
-                </button>
+            {/* Global Actions */}
+            <div className="flex items-center gap-1">
+                <button onClick={handleCopyRightToLeft} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-gray-500" title="Copy All Right to Left"><ArrowLeft size={14} /></button>
+                <button onClick={handleSwap} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-gray-500" title="Swap Sides"><ArrowRightLeft size={14} /></button>
+                <button onClick={handleCopyLeftToRight} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-gray-500" title="Copy All Left to Right"><ArrowRight size={14} /></button>
             </div>
         </div>
 
-        {/* Global Actions */}
-        <div className="flex items-center gap-1 justify-center w-full xl:w-auto">
-           <button 
-             onClick={handleCopyRightToLeft}
-             title="Copy All Right to Left (Overwrite)"
-             className="p-1.5 rounded hover:bg-white dark:hover:bg-gray-700 text-gray-500 hover:text-primary transition-colors border border-transparent hover:border-gray-200 dark:hover:border-gray-600"
-           >
-             <ArrowLeft size={16} />
-           </button>
-           
-           <button 
-             onClick={handleSwap}
-             title="Swap All"
-             className="p-1.5 rounded hover:bg-white dark:hover:bg-gray-700 text-gray-500 hover:text-primary transition-colors border border-transparent hover:border-gray-200 dark:hover:border-gray-600 mx-1"
-           >
-             <ArrowRightLeft size={16} />
-           </button>
-
-           <button 
-             onClick={handleCopyLeftToRight}
-             title="Copy All Left to Right (Overwrite)"
-             className="p-1.5 rounded hover:bg-white dark:hover:bg-gray-700 text-gray-500 hover:text-primary transition-colors border border-transparent hover:border-gray-200 dark:hover:border-gray-600"
-           >
-             <ArrowRight size={16} />
-           </button>
+        {/* Right: Modified Title */}
+        <div className="flex-1 w-full xl:w-auto flex items-center justify-end min-w-0 px-2">
+             <div className="relative group flex-1">
+                 <input 
+                   type="text" 
+                   value={modifiedTitle}
+                   onChange={(e) => onModifiedTitleChange(e.target.value)}
+                   className="bg-transparent text-xs font-bold text-green-600 dark:text-green-400 outline-none w-full truncate focus:bg-white dark:focus:bg-gray-700 rounded px-1 transition-all border border-transparent focus:border-gray-300 dark:focus:border-gray-600 text-right"
+                   placeholder="Modified"
+                   title="Modified File Name"
+                 />
+                 <Pencil size={10} className="absolute left-1 top-1/2 -translate-y-1/2 text-gray-400 opacity-0 group-hover:opacity-100 pointer-events-none" />
+             </div>
+             <span className="text-xs font-bold text-gray-400 ml-2 shrink-0 select-none">MODIFIED</span>
         </div>
       </div>
 
@@ -495,7 +454,7 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
             diffWordWrap: 'off' as const,
             padding: { top: 16, bottom: 16 },
             renderOverviewRuler: false,
-            automaticLayout: false
+            automaticLayout: false // Critical for manual ResizeObserver logic
           }}
         />
       </div>

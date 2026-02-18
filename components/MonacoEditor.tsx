@@ -10,9 +10,10 @@ interface MonacoEditorProps {
   theme?: 'light' | 'dark';
   language?: string;
   onMount?: (editor: any, monaco: any) => void;
+  options?: any;
 }
 
-const MonacoEditor: React.FC<MonacoEditorProps> = ({ value, onChange, theme = 'light', language = 'json', onMount }) => {
+const MonacoEditor: React.FC<MonacoEditorProps> = ({ value, onChange, theme = 'light', language = 'json', onMount, options }) => {
   const [editor, setEditor] = useState<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -68,7 +69,8 @@ const MonacoEditor: React.FC<MonacoEditorProps> = ({ value, onChange, theme = 'l
             addExtraSpaceOnTop: false,
             autoFindInSelection: 'multiline',
             seedSearchStringFromSelection: 'always',
-          }
+          },
+          ...options
         }}
         onMount={handleEditorMount}
         loading={

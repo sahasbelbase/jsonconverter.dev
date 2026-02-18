@@ -18,7 +18,8 @@ export enum ToolMode {
   FORMAT = 'FORMAT',
   HTML = 'HTML',
   TOKENIZER = 'TOKENIZER',
-  JWT = 'JWT'
+  JWT = 'JWT',
+  URL_ENCODER = 'URL_ENCODER'
 }
 
 export type AlertType = 'success' | 'error' | 'info';

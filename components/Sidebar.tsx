@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileJson, GitCompareArrows, FileCode2, Code, Calculator, Shield } from 'lucide-react';
+import { FileJson, GitCompareArrows, FileCode2, Code, Calculator, Shield, Link } from 'lucide-react';
 import { ToolMode } from '../types';
 
 interface SidebarProps {
@@ -20,6 +20,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTool, onSelect }) => {
       icon: <FileCode2 size={24} />,
       label: 'Formats',
       desc: 'JSON to XML/YAML'
+    },
+    {
+      id: ToolMode.URL_ENCODER,
+      icon: <Link size={24} />,
+      label: 'URL Encoder',
+      desc: 'Parse & Encode'
     },
     {
       id: ToolMode.JWT,

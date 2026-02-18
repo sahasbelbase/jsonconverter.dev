@@ -18,6 +18,13 @@ A fast, lightweight, and secure web application to validate, format, and convert
     *   **Flattening**: Intelligently flattens nested objects and arrays into a tabular format.
     *   **Preview**: Searchable and paginated table preview of your data.
     *   **Export**: Download as `.xlsx` (Excel) or `.csv`.
+*   **Developer Tools**:
+    *   **Diff Viewer**: Compare JSON, text, or code side-by-side with difference highlighting.
+    *   **URL Encoder/Decoder**: Parse URLs, inspect query parameters, and switch between `encodeURI` and `encodeURIComponent` modes. Supports batch processing for multiple lines.
+    *   **Format Converter**: Convert JSON to YAML, XML, TOML, or Properties files.
+    *   **HTML Viewer**: Real-time HTML preview with beautify/minify capabilities.
+    *   **Token Counter**: Estimate token usage and costs for GPT-4/Claude models.
+    *   **JWT Decoder**: Debug and verify JSON Web Tokens securely on the client-side.
 *   **UX/UI**:
     *   **Dark Mode**: Fully supported dark theme.
     *   **Drag & Drop**: Easy file upload.
@@ -35,7 +42,7 @@ A fast, lightweight, and secure web application to validate, format, and convert
 
 ## Credits
 
-Created by **Sahas** with the help of **Google AI**.
+Created by **Sahas** .
 
 ---
-*© 2024 JSON Tools. All rights reserved.*
+*© 2026 JSON Tools. All rights reserved.*

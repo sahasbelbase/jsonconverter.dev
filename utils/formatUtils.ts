@@ -302,3 +302,48 @@ export const minifyHTML = (html: string): string => {
     .replace(/\s{2,}/g, ' ')          // Collapse multiple whitespace
     .trim();
 };
+
+/**
+ * Format XML (Simple Indentation)
+ */
+export const formatXML = (xml: string): string => {
+  let formatted = '';
+  const reg = /(>)(<)(\/*)/g;
+  const xmlStr = xml.replace(reg, '$1\r\n$2$3');
+  let pad = 0;
+  
+  xmlStr.split('\r\n').forEach((node) => {
+    let indent = 0;
+    if (node.match(/.+<\/\w[^>]*>$/)) {
+      indent = 0;
+    } else if (node.match(/^<\/\w/)) {
+      if (pad !== 0) {
+        pad -= 1;
+      }
+    } else if (node.match(/^<\w[^>]*[^\/]>.*$/)) {
+      indent = 1;
+    } else {
+      indent = 0;
+    }
+
+    let padding = '';
+    for (let i = 0; i < pad; i++) {
+      padding += '  ';
+    }
+
+    formatted += padding + node + '\r\n';
+    pad += indent;
+  });
+
+  return formatted.trim();
+};
+
+/**
+ * Minify XML
+ */
+export const minifyXML = (xml: string): string => {
+  return xml
+    .replace(/>\s+</g, '><')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+};

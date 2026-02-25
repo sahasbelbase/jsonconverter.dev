@@ -17,6 +17,8 @@ export enum ToolMode {
   DIFF = 'DIFF',
   FORMAT = 'FORMAT',
   HTML = 'HTML',
+  XML = 'XML',
+  MEDIA_PLAYER = 'MEDIA_PLAYER',
   TOKENIZER = 'TOKENIZER',
   JWT = 'JWT',
   URL_ENCODER = 'URL_ENCODER'

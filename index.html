@@ -4,7 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#3b82f6" />
-    <title>JSON to Excel/CSV Converter</title>
+    <title>Dev Tools - JSON Converter, Formatter, Tokenizer & More</title>
+    <meta name="description" content="Free developer tools: JSON to Excel/CSV converter, JSON formatter, JWT decoder, Token counter (GPT-4), Media player, and more. Secure client-side processing." />
     <link rel="icon" href="/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/icon.svg">
     <link rel="canonical" href="https://jsonconverter-dev.vercel.app/" />
@@ -41,11 +42,30 @@
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@4.2.1",
     "vite": "https://esm.sh/vite@5.2.0",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "vite-plugin-pwa": "https://esm.sh/vite-plugin-pwa@^1.2.0"
+    "vite-plugin-pwa": "https://esm.sh/vite-plugin-pwa@^1.2.0",
+    "react-player": "https://esm.sh/react-player@2.16.0?deps=react@18.3.1"
   }
 }
 </script>
-</head>
+    <style>
+      /* Hide scrollbar for Chrome, Safari and Opera */
+      ::-webkit-scrollbar {
+        display: none !important;
+      }
+      /* Hide scrollbar for IE, Edge and Firefox */
+      * {
+        -ms-overflow-style: none !important;  /* IE and Edge */
+        scrollbar-width: none !important;  /* Firefox */
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+          display: none !important;
+      }
+      .scrollbar-hide {
+          -ms-overflow-style: none !important;
+          scrollbar-width: none !important;
+      }
+    </style>
+  </head>
   <body class="bg-gray-50 text-gray-900 dark:bg-dark dark:text-gray-100 transition-colors duration-200">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>

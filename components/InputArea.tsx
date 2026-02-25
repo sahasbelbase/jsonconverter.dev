@@ -268,8 +268,11 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
                  endColumn: errorLoc.column + 1
                },
                options: {
-                 inlineClassName: 'bg-red-500/30 dark:bg-red-500/50 rounded-sm cursor-help',
-                 hoverMessage: { value: `**Error**: ${activeError}` }
+                 isWholeLine: false,
+                 className: 'bg-red-500/30 dark:bg-red-500/50 border-b-2 border-red-600 dark:border-red-400 cursor-help',
+                 hoverMessage: { value: `**Error**: ${activeError}` },
+                 glyphMarginClassName: 'bg-red-500 rounded-full w-3 h-3 ml-1 mt-1', // Error dot in gutter
+                 minimap: { color: '#ef4444', position: 1 } // Highlight in minimap
                }
             },
             {
@@ -281,7 +284,7 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
                },
                options: {
                    isWholeLine: true,
-                   className: 'bg-red-100/50 dark:bg-red-900/20'
+                   className: 'bg-red-100/30 dark:bg-red-900/20'
                }
             }
          ];
@@ -528,6 +531,11 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
                   onChange={(val) => onChange(val || '')} 
                   theme={isDarkMode ? 'dark' : 'light'}
                   onMount={handleEditorMount}
+                  options={{
+                    glyphMargin: true, // Enable gutter for error icons
+                    lineDecorationsWidth: 10,
+                    lineNumbersMinChars: 3
+                  }}
                 />
                 
                 {/* Empty State Overlay */}
@@ -545,25 +553,30 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
               {/* Status Bar */}
               <div className={`flex-none px-4 py-2 text-xs flex justify-between items-center border-t transition-colors duration-200 ${
                 activeError 
-                  ? 'bg-red-100 dark:bg-red-900/40 border-red-200 dark:border-red-800 text-red-700 dark:text-red-200' 
+                  ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-200' 
                   : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400'
               }`}>
-                <div className="flex items-center gap-3 overflow-hidden">
-                  {activeError ? <ShieldAlert size={14} className="shrink-0" /> : <Check size={14} className="text-green-500 shrink-0" />}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 truncate">
-                    <span className={`font-mono font-medium ${activeError ? 'text-red-700 dark:text-red-200' : 'text-green-600 dark:text-green-400'}`}>
+                <div className="flex items-center gap-3 overflow-hidden w-full">
+                  {activeError ? <ShieldAlert size={16} className="shrink-0 text-red-600 dark:text-red-400" /> : <Check size={14} className="text-green-500 shrink-0" />}
+                  
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 truncate w-full">
+                    <span className={`font-mono font-bold ${activeError ? 'text-red-700 dark:text-red-300' : 'text-green-600 dark:text-green-400'}`}>
                       {activeError ? 'Invalid JSON' : (value.trim() ? 'Valid JSON' : 'Empty')}
                     </span>
+                    
                     {activeError && (
-                      <div className="flex gap-2 items-center">
+                      <div className="flex flex-wrap gap-2 items-center text-red-600 dark:text-red-300 w-full overflow-hidden">
                         {errorLoc && (
-                          <span className="font-mono bg-red-200 dark:bg-red-800 px-1.5 py-0.5 rounded text-red-800 dark:text-red-100 shrink-0">
+                          <span className="font-mono bg-red-100 dark:bg-red-800/50 px-1.5 py-0.5 rounded text-red-800 dark:text-red-100 shrink-0 border border-red-200 dark:border-red-700">
                             Ln {errorLoc.line}, Col {errorLoc.column}
                           </span>
                         )}
+                        <span className="truncate flex-1" title={activeError}>
+                           {activeError}
+                        </span>
                         {errorSuggestion && (
-                           <span className="hidden sm:inline-block text-red-600 dark:text-red-300 italic border-l border-red-300 dark:border-red-700 pl-2 ml-1">
-                             {errorSuggestion}
+                           <span className="hidden md:inline-block text-red-700 dark:text-red-200 font-medium bg-red-100 dark:bg-red-900/40 px-2 py-0.5 rounded border-l-2 border-red-500">
+                             💡 {errorSuggestion}
                            </span>
                         )}
                       </div>

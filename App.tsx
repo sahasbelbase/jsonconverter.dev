@@ -9,6 +9,8 @@ import SeoHead from './components/SeoHead';
 import DiffViewer from './components/DiffViewer';
 import FormatConverter from './components/FormatConverter';
 import HtmlViewer from './components/HtmlViewer';
+import XmlViewer from './components/XmlViewer';
+import MediaPlayer from './components/MediaPlayer';
 import Tokenizer from './components/Tokenizer';
 import JwtDecoder from './components/JwtDecoder';
 import UrlConverter from './components/UrlConverter';
@@ -37,6 +39,12 @@ function App() {
 
   // -- State: HTML Tool --
   const [htmlInput, setHtmlInput] = useState<string>('');
+
+  // -- State: XML Tool --
+  const [xmlInput, setXmlInput] = useState<string>('');
+
+  // -- State: Media Player --
+  const [mediaUrl, setMediaUrl] = useState<string>('');
 
   // -- State: URL Tool --
   const [urlInput, setUrlInput] = useState<string>('');
@@ -70,6 +78,12 @@ function App() {
 
       const savedHtmlInput = localStorage.getItem('htmlInput');
       if (savedHtmlInput) setHtmlInput(savedHtmlInput);
+
+      const savedXmlInput = localStorage.getItem('xmlInput');
+      if (savedXmlInput) setXmlInput(savedXmlInput);
+
+      const savedMediaUrl = localStorage.getItem('mediaUrl');
+      if (savedMediaUrl) setMediaUrl(savedMediaUrl);
 
       const savedUrlInput = localStorage.getItem('urlInput');
       if (savedUrlInput) setUrlInput(savedUrlInput);
@@ -105,6 +119,8 @@ function App() {
         if (diffModified.length < 5_000_000) localStorage.setItem('diffModified', diffModified);
         if (formatInput.length < 5_000_000) localStorage.setItem('formatInput', formatInput);
         if (htmlInput.length < 5_000_000) localStorage.setItem('htmlInput', htmlInput);
+        if (xmlInput.length < 5_000_000) localStorage.setItem('xmlInput', xmlInput);
+        if (mediaUrl.length < 2000) localStorage.setItem('mediaUrl', mediaUrl);
         if (urlInput.length < 5_000_000) localStorage.setItem('urlInput', urlInput);
         if (jwtToken.length < 100_000) localStorage.setItem('jwtToken', jwtToken);
         if (jwtSecret.length < 10_000) localStorage.setItem('jwtSecret', jwtSecret);
@@ -114,7 +130,7 @@ function App() {
       } catch (e) { /* Ignore quota */ }
     }, 1000);
     return () => clearTimeout(timer);
-  }, [jsonInput, diffOriginal, diffModified, formatInput, htmlInput, urlInput, jwtToken, jwtSecret, jwtPublicKey, jwtPrivateKey, activeTool]);
+  }, [jsonInput, diffOriginal, diffModified, formatInput, htmlInput, xmlInput, mediaUrl, urlInput, jwtToken, jwtSecret, jwtPublicKey, jwtPrivateKey, activeTool]);
 
   // Clear errors when switching tools
   useEffect(() => {
@@ -214,52 +230,65 @@ function App() {
   };
 
   const getSeoProps = () => {
+    const baseTitle = 'Dev Tools';
     switch (activeTool) {
       case ToolMode.CONVERTER:
         return {
-          title: "JSON to Excel/CSV Converter | Formatter & Validator",
+          title: `JSON to Excel/CSV Converter - ${baseTitle}`,
           description: "Convert JSON to Excel (XLSX) or CSV instantly. Features include a powerful JSON validator, formatter, beautifier, and auto-repair for common JSON errors.",
           path: "/"
         };
       case ToolMode.DIFF:
         return {
-          title: "JSON Diff Viewer | Compare Text & Code Online",
+          title: `Text & Code Diff Viewer - ${baseTitle}`,
           description: "Free online Diff Viewer. Compare JSON, text, or code side-by-side. Highlights differences with precision. No data leaves your browser.",
           path: "/diff-viewer"
         };
       case ToolMode.FORMAT:
         return {
-          title: "JSON Format Converter | YAML, XML, TOML",
+          title: `JSON Format Converter (YAML, XML) - ${baseTitle}`,
           description: "Convert JSON to YAML, XML, TOML, or Properties files instantly. Useful for DevOps configuration files and cross-format data exchange.",
           path: "/format-converter"
         };
       case ToolMode.URL_ENCODER:
         return {
-          title: "URL Encoder & Decoder | URL Inspector & Parser",
+          title: `URL Encoder & Decoder - ${baseTitle}`,
           description: "Encode or Decode URLs with support for batch processing. Inspect URL components including query parameters, host, and protocol.",
           path: "/url-encoder"
         };
       case ToolMode.HTML:
         return {
-          title: "HTML Viewer & Beautifier | Minify & Preview",
+          title: `HTML Viewer & Beautifier - ${baseTitle}`,
           description: "Real-time HTML editor with live preview. Beautify or minify your HTML code easily. Secure client-side processing.",
           path: "/html-viewer"
         };
+      case ToolMode.XML:
+        return {
+          title: `XML Formatter & Beautifier - ${baseTitle}`,
+          description: "Free online XML Formatter. Beautify, minify, and edit XML files with syntax highlighting.",
+          path: "/xml-formatter"
+        };
+      case ToolMode.MEDIA_PLAYER:
+        return {
+          title: `Online Media Player (YouTube/MP4) - ${baseTitle}`,
+          description: "Play YouTube videos, MP4, WebM, and MP3 files directly in your browser. Includes download options for offline viewing.",
+          path: "/media-player"
+        };
       case ToolMode.TOKENIZER:
         return {
-          title: "Token Counter & Calculator | GPT-4 Cost Estimator",
+          title: `Token Counter (GPT-4) - ${baseTitle}`,
           description: "Count tokens for OpenAI GPT-4, Claude, and other LLMs. Visualize tokenization and estimate API costs in real-time.",
           path: "/tokenizer"
         };
       case ToolMode.JWT:
         return {
-          title: "JWT Decoder & Verifier | Debug JSON Web Tokens",
+          title: `JWT Decoder & Verifier - ${baseTitle}`,
           description: "Decode, verify, and debug JWTs (JSON Web Tokens). Supports HS256, RS256, ES256 signature verification and security analysis.",
           path: "/jwt-decoder"
         };
       default:
         return {
-          title: "JSON Tools | Developer Utilities",
+          title: `${baseTitle} - All-in-One Developer Utilities`,
           description: "A collection of essential developer tools: JSON Converter, Diff Viewer, URL Encoder, JWT Decoder, and more.",
           path: "/"
         };
@@ -272,6 +301,8 @@ function App() {
       case ToolMode.DIFF: return 'Diff Viewer';
       case ToolMode.FORMAT: return 'Convert JSON to Other Formats';
       case ToolMode.HTML: return 'HTML Viewer & Beautifier';
+      case ToolMode.XML: return 'XML Formatter';
+      case ToolMode.MEDIA_PLAYER: return 'Media Player';
       case ToolMode.URL_ENCODER: return 'URL Encoder & Parser';
       case ToolMode.TOKENIZER: return 'Token Counter & Cost Estimator';
       case ToolMode.JWT: return 'JWT Decoder & Verifier';
@@ -301,10 +332,10 @@ function App() {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight leading-none">
-                JSON <span className="text-primary">Tools</span>
+                Dev <span className="text-primary">Tools</span>
               </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                Dev Utilities
+                Developer Utilities
               </p>
             </div>
           </div>
@@ -338,7 +369,7 @@ function App() {
         </div>
 
         {/* Content Area - Adjusted padding for Sidebar */}
-        <main className="flex-1 flex flex-col min-h-0 w-full px-4 py-4 overflow-hidden relative bg-gray-50 dark:bg-dark pl-20">
+        <main className="flex-1 flex flex-col min-h-0 w-full pr-2 md:pr-4 py-4 overflow-hidden relative bg-gray-50 dark:bg-dark pl-20 md:pl-24 transition-all duration-300">
           
           {/* Top Ad */}
           {!adsBlocked && (
@@ -362,12 +393,12 @@ function App() {
           <div className="flex-1 flex flex-col min-w-0 min-h-0 max-w-screen-2xl mx-auto w-full">
             
             <div className="flex-none flex items-center justify-between mb-2 px-1">
-               <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 ml-2">
+               <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 ml-2 truncate">
                   {getToolTitle()}
                </h2>
-               <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+               <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 shrink-0">
                   <ShieldCheck size={12} className={adsBlocked ? "text-primary" : "text-green-600 dark:text-green-500"} />
-                  <span>
+                  <span className="hidden sm:inline">
                     {!adsBlocked 
                       ? "Ads do not access data." 
                       : "Clean mode."}
@@ -375,7 +406,7 @@ function App() {
                </div>
             </div>
 
-            <div className="flex-1 bg-white dark:bg-dark-secondary rounded-2xl shadow-xl overflow-hidden border border-gray-100 dark:border-gray-800 p-2 relative flex flex-col min-h-0 transition-all">
+            <div className="flex-1 bg-white dark:bg-dark-secondary rounded-2xl shadow-xl overflow-hidden border border-gray-100 dark:border-gray-800 p-2 relative flex flex-col min-h-0 transition-all overflow-y-auto scrollbar-hide">
               
               {/* CONVERTER TOOL */}
               <div className={`flex-1 flex flex-col min-h-0 ${activeTool === ToolMode.CONVERTER ? 'block' : 'hidden'}`}>
@@ -435,6 +466,22 @@ function App() {
                 <HtmlViewer 
                    value={htmlInput}
                    onChange={setHtmlInput}
+                />
+              </div>
+
+              {/* XML VIEWER TOOL */}
+              <div className={`flex-1 flex flex-col min-h-0 ${activeTool === ToolMode.XML ? 'block' : 'hidden'}`}>
+                <XmlViewer 
+                   value={xmlInput}
+                   onChange={setXmlInput}
+                />
+              </div>
+
+              {/* MEDIA PLAYER TOOL */}
+              <div className={`flex-1 flex flex-col min-h-0 ${activeTool === ToolMode.MEDIA_PLAYER ? 'block' : 'hidden'}`}>
+                <MediaPlayer 
+                   initialUrl={mediaUrl}
+                   onUrlChange={setMediaUrl}
                 />
               </div>
 

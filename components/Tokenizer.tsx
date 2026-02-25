@@ -267,7 +267,7 @@ const Tokenizer: React.FC = () => {
         </div>
 
         {/* Cost Pane (Right Sidebar) */}
-        <div className="lg:w-80 flex-none flex flex-col gap-4 overflow-y-auto">
+        <div className="lg:w-80 flex-none flex flex-col gap-4 overflow-y-auto scrollbar-hide">
           <div className="bg-white dark:bg-dark-secondary rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
              <div className="flex items-center gap-2 mb-4">
                 <Info size={16} className="text-primary" />

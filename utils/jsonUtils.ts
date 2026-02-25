@@ -217,31 +217,66 @@ export const analyzeJsonError = (error: Error, json: string): string | null => {
   if (!error || !error.message) return null;
   const msg = error.message;
 
+  // 1. Trailing Commas
   if (msg.includes("Unexpected token }") || msg.match(/Unexpected token .*} in JSON at position/)) {
-    return "Trailing comma? Check for an extra comma before the closing brace/bracket.";
+    return "Trailing comma? Check for an extra comma before the closing brace '}'.";
   }
-  if (msg.includes("Unexpected token '") || msg.includes("Unexpected string")) {
-    return "JSON standard requires double quotes (\") for keys and string values. Single quotes (') are not allowed.";
+  if (msg.includes("Unexpected token ]") || msg.match(/Unexpected token .*] in JSON at position/)) {
+    return "Trailing comma? Check for an extra comma before the closing bracket ']'.";
   }
-  if (msg.includes("Expected property name or '}'")) {
+
+  // 2. Quotes Issues
+  if (msg.includes("Unexpected token '") || msg.includes("Unexpected string") || msg.includes("Expected property name or '}'")) {
+    // Check if single quotes are used
+    if (json.includes("'")) {
+       return "JSON requires double quotes (\") for keys and strings. Single quotes (') are not allowed.";
+    }
     return "Property names (keys) must be enclosed in double quotes.";
   }
+
+  // 3. Missing Structure
   if (msg.includes("Unexpected end of JSON input")) {
     return "The JSON input seems incomplete. Check for missing closing braces '}' or brackets ']'.";
   }
-  
-  // Try to be smart about position
+
+  // 4. Context-Aware Analysis based on Position
   const match = msg.match(/at position (\d+)/);
   if (match && match[1]) {
-      const pos = parseInt(match[1]);
+      const pos = parseInt(match[1], 10);
+      // Get a small window around the error
+      const start = Math.max(0, pos - 10);
+      const end = Math.min(json.length, pos + 10);
+      const context = json.substring(start, end);
       const char = json.charAt(pos);
-      const prevChar = json.charAt(pos-1);
-      
-      if (char === '"' && prevChar !== ':' && prevChar !== '[' && prevChar !== ',') {
-          return "Missing a comma or colon before this quote?";
+      const prevChar = json.charAt(pos - 1);
+
+      // 4a. Missing Comma
+      if (char === '"' && /[0-9"truefalsenull\]\}]/.test(prevChar)) {
+          return "Missing a comma ',' before this quote?";
       }
-      if (char === ':') return "Colon used incorrectly. Ensure keys are quoted.";
+      
+      // 4b. Missing Colon
+      if (char === '"' && prevChar !== ':' && prevChar !== '[' && prevChar !== ',') {
+         // If it looks like a key, maybe missing colon?
+         // Hard to be sure without more context, but "Missing comma or colon" is safe
+         return "Missing a comma ',' or colon ':' before this quote?";
+      }
+
+      // 4c. Colon used incorrectly
+      if (char === ':') {
+          return "Colon ':' used incorrectly. Ensure keys are wrapped in double quotes.";
+      }
+
+      // 4d. Unquoted Keys (common in JS objects)
+      if (/[a-zA-Z]/.test(char) && prevChar === '{') {
+          return "Unquoted key? Keys must be wrapped in double quotes (e.g., \"key\": ...).";
+      }
+      
+      // 4e. Comments
+      if (char === '/' && (json.charAt(pos+1) === '/' || json.charAt(pos+1) === '*')) {
+          return "Comments (// or /* */) are not allowed in standard JSON.";
+      }
   }
 
-  return null;
+  return "Check for syntax errors like missing commas, unquoted keys, or trailing commas.";
 };

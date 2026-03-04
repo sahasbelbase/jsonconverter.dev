@@ -238,61 +238,71 @@ function App() {
         return {
           title: `JSON to Excel/CSV Converter - ${baseTitle}`,
           description: "Convert JSON to Excel (XLSX) or CSV instantly. Features include a powerful JSON validator, formatter, beautifier, and auto-repair for common JSON errors.",
-          path: "/"
+          path: "/",
+          keywords: "JSON converter, JSON to CSV, JSON to Excel, JSON formatter, JSON validator, online developer tools"
         };
       case ToolMode.DIFF:
         return {
           title: `Text & Code Diff Viewer - ${baseTitle}`,
           description: "Free online Diff Viewer. Compare JSON, text, or code side-by-side. Highlights differences with precision. No data leaves your browser.",
-          path: "/diff-viewer"
+          path: "/diff-viewer",
+          keywords: "diff viewer, text compare, code diff, compare JSON, online diff tool, text difference checker"
         };
       case ToolMode.FORMAT:
         return {
           title: `JSON Format Converter (YAML, XML) - ${baseTitle}`,
           description: "Convert JSON to YAML, XML, TOML, or Properties files instantly. Useful for DevOps configuration files and cross-format data exchange.",
-          path: "/format-converter"
+          path: "/format-converter",
+          keywords: "JSON to YAML, JSON to XML, format converter, JSON to TOML, DevOps tools"
         };
       case ToolMode.URL_ENCODER:
         return {
           title: `URL Encoder & Decoder - ${baseTitle}`,
           description: "Encode or Decode URLs with support for batch processing. Inspect URL components including query parameters, host, and protocol.",
-          path: "/url-encoder"
+          path: "/url-encoder",
+          keywords: "URL encoder, URL decoder, encode URI, decode URI, URL parser, query string parser"
         };
       case ToolMode.HTML:
         return {
           title: `HTML Viewer & Beautifier - ${baseTitle}`,
           description: "Real-time HTML editor with live preview. Beautify or minify your HTML code easily. Secure client-side processing.",
-          path: "/html-viewer"
+          path: "/html-viewer",
+          keywords: "HTML viewer, HTML beautifier, HTML editor, live HTML preview, minify HTML"
         };
       case ToolMode.XML:
         return {
           title: `XML Formatter & Beautifier - ${baseTitle}`,
           description: "Free online XML Formatter. Beautify, minify, and edit XML files with syntax highlighting.",
-          path: "/xml-formatter"
+          path: "/xml-formatter",
+          keywords: "XML formatter, XML beautifier, format XML, minify XML, online XML editor"
         };
       case ToolMode.MEDIA_PLAYER:
         return {
           title: `Online Media Player (YouTube/MP4) - ${baseTitle}`,
           description: "Play YouTube videos, MP4, WebM, and MP3 files directly in your browser. Includes download options for offline viewing.",
-          path: "/media-player"
+          path: "/media-player",
+          keywords: "online media player, play MP4, YouTube player, play MP3, web video player"
         };
       case ToolMode.TOKENIZER:
         return {
           title: `Token Counter (GPT-4) - ${baseTitle}`,
           description: "Count tokens for OpenAI GPT-4, Claude, and other LLMs. Visualize tokenization and estimate API costs in real-time.",
-          path: "/tokenizer"
+          path: "/tokenizer",
+          keywords: "token counter, GPT-4 tokens, OpenAI tokenizer, LLM token cost estimator, count tokens"
         };
       case ToolMode.JWT:
         return {
           title: `JWT Decoder & Verifier - ${baseTitle}`,
           description: "Decode, verify, and debug JWTs (JSON Web Tokens). Supports HS256, RS256, ES256 signature verification and security analysis.",
-          path: "/jwt-decoder"
+          path: "/jwt-decoder",
+          keywords: "JWT decoder, JSON Web Token, verify JWT, debug JWT, HS256, RS256"
         };
       default:
         return {
           title: `${baseTitle} - All-in-One Developer Utilities`,
           description: "A collection of essential developer tools: JSON Converter, Diff Viewer, URL Encoder, JWT Decoder, and more.",
-          path: "/"
+          path: "/",
+          keywords: "developer tools, JSON tools, web utilities, programming tools, online dev tools"
         };
     }
   };
@@ -323,6 +333,7 @@ function App() {
            title={seo.title} 
            description={seo.description}
            path={seo.path}
+           keywords={(seo as any).keywords}
         />
 
       <ShortcutsHelp isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />

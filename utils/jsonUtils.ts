@@ -1,4 +1,5 @@
 import { FlatJSON, ParsedData, JsonStats } from '../types';
+import { jsonrepair } from 'jsonrepair';
 
 /**
  * Flattens a deeply nested JSON object or array of objects into a flat table structure.
@@ -134,52 +135,31 @@ export const fixJson = (input: string): string => {
   // 1. Fix "Smart Quotes" (curly quotes) from Word/Blogs to standard quotes
   fixed = fixed.replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"');
 
-  // 2. Remove comments (Block /* */ and Line //)
-  fixed = fixed.replace(/\/\*[\s\S]*?\*\//g, ""); 
-  fixed = fixed.replace(/\/\/.*$/gm, ""); 
-
-  // 3. Python/JS constants to JSON
+  // 2. Python/JS constants to JSON
   fixed = fixed.replace(/\bNone\b/g, "null");
   fixed = fixed.replace(/\bTrue\b/g, "true");
   fixed = fixed.replace(/\bFalse\b/g, "false");
   fixed = fixed.replace(/\bundefined\b/g, "null");
 
-  // 4. MongoDB Types (ObjectId, ISODate) -> Strings
+  // 3. MongoDB Types (ObjectId, ISODate) -> Strings
   // ObjectId("...") -> "..."
   fixed = fixed.replace(/ObjectId\s*\(\s*["']([^"']+)["']\s*\)/g, '"$1"');
   // ISODate("...") -> "..."
   fixed = fixed.replace(/ISODate\s*\(\s*["']([^"']+)["']\s*\)/g, '"$1"');
 
-  // 5. Fix Quotes
-  
-  // Replace single quotes for Keys: 'key': -> "key":
-  // Matches start of line or after { or , followed by 'key':
-  fixed = fixed.replace(/(^|[{,]\s*)'([^']+)'\s*:/g, '$1"$2":');
-  
-  // Replace unquoted keys: key: -> "key":
-  // We match valid variable names followed by a colon
-  fixed = fixed.replace(/(^|[{,]\s*)([a-zA-Z0-9_$]+)\s*:/g, '$1"$2":');
-
-  // Replace single quotes for Values: : 'value' -> : "value"
-  // Safe(r) regex: matches : '...' where ... does not contain unescaped '
-  // and is followed by comma, closing brace, or closing bracket
-  fixed = fixed.replace(/:\s*'([^'\\]*(?:\\.[^'\\]*)*)'(?=\s*[,}\]])/g, ': "$1"');
-
-  // 6. Structural Fixes
-  
-  // Trailing commas: , } -> } and , ] -> ]
-  fixed = fixed.replace(/,\s*([}\]])/g, '$1');
-
-  // Missing commas between objects: } { -> }, {
-  fixed = fixed.replace(/}\s*{/g, '}, {');
-  
-  // Missing commas between arrays: ] [ -> ], [
-  fixed = fixed.replace(/]\s*\[/g, '], [');
-
-  // Missing commas between properties (risky but useful for "dirty" logs)
-  // e.g. "a": 1 "b": 2 -> "a": 1, "b": 2
-  // We look for a value (number, bool, null, or string) followed by whitespace then a quote (start of next key)
-  fixed = fixed.replace(/("[\s\S]*?"|true|false|null|-?\d+(?:\.\d+)?)\s+(?=")/g, '$1, ');
+  try {
+    // 4. Use jsonrepair to fix missing brackets, trailing commas, unquoted keys, etc.
+    fixed = jsonrepair(fixed);
+  } catch (err) {
+    // If jsonrepair fails, fallback to basic regex fixes
+    fixed = fixed.replace(/(^|[{,]\s*)'([^']+)'\s*:/g, '$1"$2":');
+    fixed = fixed.replace(/(^|[{,]\s*)([a-zA-Z0-9_$]+)\s*:/g, '$1"$2":');
+    fixed = fixed.replace(/:\s*'([^'\\]*(?:\\.[^'\\]*)*)'(?=\s*[,}\]])/g, ': "$1"');
+    fixed = fixed.replace(/,\s*([}\]])/g, '$1');
+    fixed = fixed.replace(/}\s*{/g, '}, {');
+    fixed = fixed.replace(/]\s*\[/g, '], [');
+    fixed = fixed.replace(/("[\s\S]*?"|true|false|null|-?\d+(?:\.\d+)?)\s+(?=")/g, '$1, ');
+  }
 
   return fixed;
 };

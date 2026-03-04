@@ -4,6 +4,8 @@ import { ChevronRight, ChevronDown, Copy, ChevronUp } from 'lucide-react';
 interface JsonTreeViewProps {
   data: any;
   searchTerm?: string;
+  expandAllSignal?: number;
+  collapseAllSignal?: number;
 }
 
 interface JsonNodeProps {
@@ -13,6 +15,8 @@ interface JsonNodeProps {
   searchTerm?: string;
   path: string;
   currentMatchPath?: string | null;
+  expandAllSignal?: number;
+  collapseAllSignal?: number;
 }
 
 const getType = (value: any) => {
@@ -38,9 +42,21 @@ const HighlightedText: React.FC<{ text: string; term?: string; isCurrent?: boole
   );
 };
 
-const JsonNode: React.FC<JsonNodeProps> = ({ data, name, isLast = true, searchTerm = '', path, currentMatchPath }) => {
+const JsonNode: React.FC<JsonNodeProps> = ({ data, name, isLast = true, searchTerm = '', path, currentMatchPath, expandAllSignal, collapseAllSignal }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const nodeRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    if (expandAllSignal && expandAllSignal > 0) {
+      setIsExpanded(true);
+    }
+  }, [expandAllSignal]);
+
+  useEffect(() => {
+    if (collapseAllSignal && collapseAllSignal > 0) {
+      setIsExpanded(false);
+    }
+  }, [collapseAllSignal]);
   
   // Check if this node is the current match
   const isCurrentKeyMatch = currentMatchPath === path + '#key';
@@ -168,6 +184,8 @@ const JsonNode: React.FC<JsonNodeProps> = ({ data, name, isLast = true, searchTe
               searchTerm={searchTerm}
               path={`${path}.${key}`}
               currentMatchPath={currentMatchPath}
+              expandAllSignal={expandAllSignal}
+              collapseAllSignal={collapseAllSignal}
             />
           ))}
         </div>
@@ -210,7 +228,7 @@ const findAllMatches = (data: any, term: string, path: string = 'root', matches:
   return matches;
 };
 
-export default function JsonTreeView({ data, searchTerm }: JsonTreeViewProps) {
+export default function JsonTreeView({ data, searchTerm, expandAllSignal, collapseAllSignal }: JsonTreeViewProps) {
   const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
   const [matches, setMatches] = useState<string[]>([]);
 
@@ -262,6 +280,8 @@ export default function JsonTreeView({ data, searchTerm }: JsonTreeViewProps) {
           searchTerm={searchTerm} 
           path="root"
           currentMatchPath={matches[currentMatchIdx]}
+          expandAllSignal={expandAllSignal}
+          collapseAllSignal={collapseAllSignal}
         />
       </div>
     </div>

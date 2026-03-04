@@ -3,7 +3,7 @@ import {
   Upload, FileJson, Check, AlertCircle, 
   Code, Network, Wand2, Braces, Minimize2, ArrowRightLeft, 
   FileCode2, Trash2, ShieldAlert, Copy, Columns, Search, X,
-  Zap, ClipboardPaste
+  Zap, ClipboardPaste, Quote, FileText, ChevronsUpDown, ChevronsDownUp
 } from 'lucide-react';
 import Button from './Button';
 import JsonTreeView from './JsonTreeView';
@@ -40,6 +40,22 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
   const [showTreeSearch, setShowTreeSearch] = useState(false);
   const [treeSearchTerm, setTreeSearchTerm] = useState('');
   const treeSearchInputRef = useRef<HTMLInputElement>(null);
+  
+  // Tree View State
+  const [expandAllSignal, setExpandAllSignal] = useState(0);
+  const [collapseAllSignal, setCollapseAllSignal] = useState(0);
+  const [isTreeExpanded, setIsTreeExpanded] = useState(true);
+  const [treeCopySuccess, setTreeCopySuccess] = useState(false);
+
+  const handleToggleExpand = useCallback(() => {
+    if (isTreeExpanded) {
+      setCollapseAllSignal(s => s + 1);
+      setIsTreeExpanded(false);
+    } else {
+      setExpandAllSignal(s => s + 1);
+      setIsTreeExpanded(true);
+    }
+  }, [isTreeExpanded]);
 
   const [copySuccess, setCopySuccess] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -94,6 +110,17 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
       console.error('Failed to copy', err);
     }
   }, [value]);
+
+  const handleCopyTree = useCallback(async () => {
+    if (!parsedJson) return;
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(parsedJson, null, 2));
+      setTreeCopySuccess(true);
+      setTimeout(() => setTreeCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy tree', err);
+    }
+  }, [parsedJson]);
 
   const clearInput = useCallback(() => {
     onChange('');
@@ -466,30 +493,37 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
                 <ClipboardPaste size={16} />
              </button>
 
-             <button onClick={formatJson} disabled={!!activeError && !parsedJson} title="Format (Prettify)" className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded disabled:opacity-30 transition-colors">
-                <Braces size={16} />
+             <button onClick={formatJson} disabled={!!activeError && !parsedJson} title="Format (Prettify)" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded disabled:opacity-30 transition-colors">
+                <Braces size={14} />
+                <span className="hidden lg:inline">Format</span>
              </button>
-             <button onClick={minifyJson} disabled={!!activeError} title="Minify" className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded disabled:opacity-30 transition-colors">
-                <Minimize2 size={16} />
+             <button onClick={minifyJson} disabled={!!activeError} title="Minify (Remove spaces)" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded disabled:opacity-30 transition-colors">
+                <Minimize2 size={14} />
+                <span className="hidden lg:inline">Minify</span>
              </button>
              
              <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1 self-center" />
 
-             <button onClick={handleFixJson} title="Auto fix quotes and commas" className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors ring-1 ring-blue-100 dark:ring-blue-900">
-                <Wand2 size={16} />
+             <button onClick={handleFixJson} title="Auto fix missing brackets, quotes, and commas" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors ring-1 ring-blue-100 dark:ring-blue-900">
+                <Wand2 size={14} />
+                <span className="hidden lg:inline">Auto-Fix</span>
              </button>
-             <button onClick={handleUnescape} title="Unescape JSON String" className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
-                <FileCode2 size={16} />
+             <button onClick={handleUnescape} title="Unescape JSON string (remove backslashes)" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
+                <FileText size={14} />
+                <span className="hidden lg:inline">Unescape</span>
              </button>
-             <button onClick={handleEscape} title="Escape JSON String" className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
-                <ArrowRightLeft size={16} />
+             <button onClick={handleEscape} title="Escape JSON into a string (add backslashes)" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
+                <Quote size={14} />
+                <span className="hidden lg:inline">Escape</span>
              </button>
              <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1 self-center" />
-             <button onClick={copyToClipboard} title="Copy All (Ctrl+C if no selection)" className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
-                {copySuccess ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+             <button onClick={copyToClipboard} title="Copy All (Ctrl+C if no selection)" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
+                {copySuccess ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                <span className="hidden lg:inline">{copySuccess ? 'Copied!' : 'Copy'}</span>
              </button>
-             <button onClick={clearInput} title="Clear All (Ctrl+X if no selection)" className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors">
-                <Trash2 size={16} />
+             <button onClick={clearInput} title="Clear All (Ctrl+X if no selection)" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors">
+                <Trash2 size={14} />
+                <span className="hidden lg:inline">Clear</span>
              </button>
           </div>
         )}
@@ -606,6 +640,22 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
              <div className="flex-none h-10 border-b border-gray-200 dark:border-gray-700 flex items-center px-2 bg-gray-100 dark:bg-gray-800/50 justify-between">
                 <span className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-2">JSON Tree</span>
                 <div className="flex items-center gap-2">
+                   <button
+                     onClick={handleToggleExpand}
+                     className="p-1.5 text-gray-500 hover:text-primary hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                     title={isTreeExpanded ? "Collapse All" : "Expand All"}
+                   >
+                     {isTreeExpanded ? <ChevronsDownUp size={16} /> : <ChevronsUpDown size={16} />}
+                   </button>
+                   <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5"></div>
+                   <button
+                     onClick={handleCopyTree}
+                     className="p-1.5 text-gray-500 hover:text-primary hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                     title="Copy JSON"
+                   >
+                     {treeCopySuccess ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+                   </button>
+                   <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5"></div>
                    {showTreeSearch ? (
                      <div className="flex items-center bg-white dark:bg-gray-900 rounded-md border border-primary/50 overflow-hidden h-7 animate-in fade-in slide-in-from-right-4 duration-200">
                        <Search size={14} className="text-gray-400 ml-2" />
@@ -636,7 +686,12 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
 
              <div className="flex-1 overflow-auto p-0 relative">
               {parsedJson ? (
-                <JsonTreeView data={parsedJson} searchTerm={treeSearchTerm} />
+                <JsonTreeView 
+                  data={parsedJson} 
+                  searchTerm={treeSearchTerm} 
+                  expandAllSignal={expandAllSignal}
+                  collapseAllSignal={collapseAllSignal}
+                />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-gray-400">
                   <AlertCircle size={48} className="mb-2 opacity-50" />

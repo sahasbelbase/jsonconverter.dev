@@ -47,6 +47,32 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
   const [isTreeExpanded, setIsTreeExpanded] = useState(true);
   const [treeCopySuccess, setTreeCopySuccess] = useState(false);
 
+  // Custom styles for Monaco Editor error highlighting
+  useEffect(() => {
+    const styleId = 'monaco-error-styles';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.innerHTML = `
+        .monaco-error-highlighter {
+          background-color: #ffe2e2 !important;
+          border-bottom: 1px solid #f87171 !important;
+        }
+        .dark .monaco-error-highlighter {
+          background-color: rgba(153, 27, 27, 0.4) !important;
+          border-bottom: 1px solid #ef4444 !important;
+        }
+        .monaco-error-line {
+          background-color: #ffe2e2 !important;
+        }
+        .dark .monaco-error-line {
+          background-color: rgba(127, 29, 29, 0.1) !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }, []);
+
   const handleToggleExpand = useCallback(() => {
     if (isTreeExpanded) {
       setCollapseAllSignal(s => s + 1);
@@ -296,7 +322,7 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
                },
                options: {
                  isWholeLine: false,
-                 className: 'bg-red-500/30 dark:bg-red-500/50 border-b-2 border-red-600 dark:border-red-400 cursor-help',
+                 className: 'monaco-error-highlighter cursor-help',
                  hoverMessage: { value: `**Error**: ${activeError}` },
                  glyphMarginClassName: 'bg-red-500 rounded-full w-3 h-3 ml-1 mt-1', // Error dot in gutter
                  minimap: { color: '#ef4444', position: 1 } // Highlight in minimap
@@ -311,7 +337,7 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
                },
                options: {
                    isWholeLine: true,
-                   className: 'bg-red-100/30 dark:bg-red-900/20'
+                   className: 'monaco-error-line'
                }
             }
          ];

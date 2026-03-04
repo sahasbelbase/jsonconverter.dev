@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter } from 'react-router-dom';
 import { Moon, Sun, Braces, ShieldCheck, Github, Linkedin, Globe, Keyboard } from 'lucide-react';
 import InputArea from './components/InputArea';
 import PreviewTable from './components/PreviewTable';
@@ -14,6 +15,7 @@ import MediaPlayer from './components/MediaPlayer';
 import Tokenizer from './components/Tokenizer';
 import JwtDecoder from './components/JwtDecoder';
 import UrlConverter from './components/UrlConverter';
+import AnalyticsTracker from './components/AnalyticsTracker';
 import { parseAndFlattenJSON } from './utils/jsonUtils';
 import { exportToCSV, exportToExcel } from './utils/exportUtils';
 import { AlertMessage, ParsedData, ViewMode, ToolMode } from './types';
@@ -313,13 +315,15 @@ function App() {
   const seo = getSeoProps();
 
   return (
-    <div className="h-screen w-full flex flex-col font-sans bg-gray-50 dark:bg-dark text-gray-900 dark:text-gray-100 transition-colors duration-200 overflow-hidden">
-      
-      <SeoHead 
-         title={seo.title} 
-         description={seo.description}
-         path={seo.path}
-      />
+    <BrowserRouter>
+      <AnalyticsTracker />
+      <div className="h-screen w-full flex flex-col font-sans bg-gray-50 dark:bg-dark text-gray-900 dark:text-gray-100 transition-colors duration-200 overflow-hidden">
+        
+        <SeoHead 
+           title={seo.title} 
+           description={seo.description}
+           path={seo.path}
+        />
 
       <ShortcutsHelp isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
@@ -555,6 +559,7 @@ function App() {
         </div>
       </footer>
     </div>
+    </BrowserRouter>
   );
 }
 

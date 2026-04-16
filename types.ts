@@ -21,7 +21,8 @@ export enum ToolMode {
   MEDIA_PLAYER = 'MEDIA_PLAYER',
   TOKENIZER = 'TOKENIZER',
   JWT = 'JWT',
-  URL_ENCODER = 'URL_ENCODER'
+  URL_ENCODER = 'URL_ENCODER',
+  MARKDOWN_READER = 'MARKDOWN_READER'
 }
 
 export type AlertType = 'success' | 'error' | 'info';

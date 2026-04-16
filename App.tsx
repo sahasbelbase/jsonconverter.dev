@@ -15,6 +15,7 @@ import MediaPlayer from './components/MediaPlayer';
 import Tokenizer from './components/Tokenizer';
 import JwtDecoder from './components/JwtDecoder';
 import UrlConverter from './components/UrlConverter';
+import MarkdownReader from './components/MarkdownReader';
 import AnalyticsTracker from './components/AnalyticsTracker';
 import { parseAndFlattenJSON } from './utils/jsonUtils';
 import { exportToCSV, exportToExcel } from './utils/exportUtils';
@@ -56,6 +57,9 @@ function App() {
   const [jwtSecret, setJwtSecret] = useState<string>('');
   const [jwtPublicKey, setJwtPublicKey] = useState<string>('');
   const [jwtPrivateKey, setJwtPrivateKey] = useState<string>('');
+
+  // -- State: Markdown Reader --
+  const [markdownInput, setMarkdownInput] = useState<string>('');
 
   // -- State: Global --
   const [activeTool, setActiveTool] = useState<ToolMode>(ToolMode.CONVERTER);
@@ -102,6 +106,9 @@ function App() {
       const savedJwtPrivateKey = localStorage.getItem('jwtPrivateKey');
       if (savedJwtPrivateKey) setJwtPrivateKey(savedJwtPrivateKey);
       
+      const savedMarkdownInput = localStorage.getItem('markdownInput');
+      if (savedMarkdownInput) setMarkdownInput(savedMarkdownInput);
+
       const savedTool = localStorage.getItem('activeTool');
       if (savedTool && Object.values(ToolMode).includes(savedTool as ToolMode)) {
         setActiveTool(savedTool as ToolMode);
@@ -128,11 +135,12 @@ function App() {
         if (jwtSecret.length < 10_000) localStorage.setItem('jwtSecret', jwtSecret);
         if (jwtPublicKey.length < 10_000) localStorage.setItem('jwtPublicKey', jwtPublicKey);
         if (jwtPrivateKey.length < 10_000) localStorage.setItem('jwtPrivateKey', jwtPrivateKey);
+        if (markdownInput.length < 5_000_000) localStorage.setItem('markdownInput', markdownInput);
         localStorage.setItem('activeTool', activeTool);
       } catch (e) { /* Ignore quota */ }
     }, 1000);
     return () => clearTimeout(timer);
-  }, [jsonInput, diffOriginal, diffModified, formatInput, htmlInput, xmlInput, mediaUrl, urlInput, jwtToken, jwtSecret, jwtPublicKey, jwtPrivateKey, activeTool]);
+  }, [jsonInput, diffOriginal, diffModified, formatInput, htmlInput, xmlInput, mediaUrl, urlInput, jwtToken, jwtSecret, jwtPublicKey, jwtPrivateKey, markdownInput, activeTool]);
 
   // Clear errors when switching tools
   useEffect(() => {
@@ -297,6 +305,13 @@ function App() {
           path: "/jwt-decoder",
           keywords: "JWT decoder, JSON Web Token, verify JWT, debug JWT, HS256, RS256"
         };
+      case ToolMode.MARKDOWN_READER:
+        return {
+          title: `Markdown Reader & Exporter - ${baseTitle}`,
+          description: "Free online Markdown reader with live preview. Export Markdown to PDF, DOCX, or MD files instantly.",
+          path: "/markdown-reader",
+          keywords: "markdown reader, markdown viewer, markdown to pdf, markdown to docx, live markdown editor"
+        };
       default:
         return {
           title: `${baseTitle} - All-in-One Developer Utilities`,
@@ -318,6 +333,7 @@ function App() {
       case ToolMode.URL_ENCODER: return 'URL Encoder & Parser';
       case ToolMode.TOKENIZER: return 'Token Counter & Cost Estimator';
       case ToolMode.JWT: return 'JWT Decoder & Verifier';
+      case ToolMode.MARKDOWN_READER: return 'Markdown Reader & Exporter';
       default: return 'JSON Tool';
     }
   };
@@ -473,6 +489,14 @@ function App() {
                 <UrlConverter 
                    initialValue={urlInput}
                    onValueChange={setUrlInput}
+                />
+              </div>
+
+              {/* MARKDOWN READER TOOL */}
+              <div className={`flex-1 flex flex-col min-h-0 ${activeTool === ToolMode.MARKDOWN_READER ? 'block' : 'hidden'}`}>
+                <MarkdownReader 
+                   value={markdownInput}
+                   onChange={setMarkdownInput}
                 />
               </div>
 

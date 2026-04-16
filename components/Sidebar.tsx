@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileJson, GitCompareArrows, FileCode2, Code, Calculator, Shield, Link, CirclePlay } from 'lucide-react';
+import { FileJson, GitCompareArrows, FileCode2, Code, Calculator, Shield, Link, CirclePlay, FileText } from 'lucide-react';
 import { ToolMode } from '../types';
 
 interface SidebarProps {
@@ -32,6 +32,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTool, onSelect }) => {
       icon: <Shield size={24} />,
       label: 'JWT Decoder',
       desc: 'Debug & Verify'
+    },
+    {
+      id: ToolMode.MARKDOWN_READER,
+      icon: <FileText size={24} />,
+      label: 'MD Reader',
+      desc: 'View & Export'
     },
     {
       id: ToolMode.HTML,

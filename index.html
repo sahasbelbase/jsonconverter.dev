@@ -1,41 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#3b82f6" />
-    <title>Dev Tools - JSON Converter, Formatter, Tokenizer & More</title>
-    <meta name="description" content="Free developer tools: JSON to Excel/CSV converter, JSON formatter, JWT decoder, Token counter (GPT-4), Media player, and more. Secure client-side processing." />
-    <link rel="icon" href="/icon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/icon.svg">
-    <link rel="canonical" href="https://jsonconverter-dev.vercel.app/" />
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZZM7HXZZDE"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
 
-      gtag('config', 'G-ZZM7HXZZDE', { page_path: window.location.pathname });
-    </script>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4378496741687724" crossorigin="anonymous"></script>
-    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            colors: {
-              primary: '#3b82f6',
-              secondary: '#64748b',
-              dark: '#0f172a',
-              'dark-secondary': '#1e293b'
-            }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#3b82f6" />
+  <title>Dev Tools - JSON Converter, Formatter, Tokenizer & More</title>
+  <meta name="description"
+    content="Free developer tools: JSON to Excel/CSV converter, JSON formatter, JWT decoder, Token counter (GPT-4), Media player, and more. Secure client-side processing." />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <link rel="canonical" href="https://jsonconverter-dev.vercel.app/" />
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZZM7HXZZDE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-ZZM7HXZZDE', { page_path: window.location.pathname });
+  </script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4378496741687724"
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3b82f6',
+            secondary: '#64748b',
+            dark: '#0f172a',
+            'dark-secondary': '#1e293b'
           }
         }
       }
-    </script>
-<script type="importmap">
+    }
+  </script>
+  <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@18.3.1",
@@ -60,27 +63,82 @@
   }
 }
 </script>
-    <style>
-      /* Hide scrollbar for Chrome, Safari and Opera */
-      ::-webkit-scrollbar {
-        display: none !important;
-      }
-      /* Hide scrollbar for IE, Edge and Firefox */
-      * {
-        -ms-overflow-style: none !important;  /* IE and Edge */
-        scrollbar-width: none !important;  /* Firefox */
-      }
-      .scrollbar-hide::-webkit-scrollbar {
-          display: none !important;
-      }
-      .scrollbar-hide {
-          -ms-overflow-style: none !important;
-          scrollbar-width: none !important;
-      }
-    </style>
-  </head>
-  <body class="bg-gray-50 text-gray-900 dark:bg-dark dark:text-gray-100 transition-colors duration-200">
-    <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-  </body>
+  <style>
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    ::-webkit-scrollbar {
+      display: none !important;
+    }
+
+    /* Hide scrollbar for IE, Edge and Firefox */
+    * {
+      -ms-overflow-style: none !important;
+      /* IE and Edge */
+      scrollbar-width: none !important;
+      /* Firefox */
+    }
+
+    .scrollbar-hide::-webkit-scrollbar {
+      display: none !important;
+    }
+
+    .scrollbar-hide {
+      -ms-overflow-style: none !important;
+      scrollbar-width: none !important;
+    }
+
+    /* --- JSON Tree pane: always-visible scrollbar ---
+         ID selector (1,0,0) beats the global ::-webkit-scrollbar (0,0,1)
+         even when both use !important — higher specificity wins.            */
+    #tree-pane-scroll {
+      overflow: auto !important;
+      scrollbar-width: thin !important;
+      /* Firefox */
+      scrollbar-color: #64748b transparent !important;
+      -ms-overflow-style: auto !important;
+      /* IE/Edge */
+    }
+
+    #tree-pane-scroll::-webkit-scrollbar {
+      display: block !important;
+      width: 8px !important;
+      height: 8px !important;
+    }
+
+    #tree-pane-scroll::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05) !important;
+      border-radius: 999px !important;
+    }
+
+    #tree-pane-scroll::-webkit-scrollbar-thumb {
+      background-color: #64748b !important;
+      border-radius: 999px !important;
+      border: 2px solid transparent !important;
+      background-clip: padding-box !important;
+      min-height: 40px !important;
+    }
+
+    #tree-pane-scroll::-webkit-scrollbar-thumb:hover {
+      background-color: #3b82f6 !important;
+    }
+
+    /* Dark mode */
+    .dark #tree-pane-scroll {
+      scrollbar-color: #475569 transparent !important;
+    }
+
+    .dark #tree-pane-scroll::-webkit-scrollbar-thumb {
+      background-color: #475569 !important;
+    }
+
+    .dark #tree-pane-scroll::-webkit-scrollbar-thumb:hover {
+      background-color: #60a5fa !important;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-50 text-gray-900 dark:bg-dark dark:text-gray-100 transition-colors duration-200">
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
 </html>

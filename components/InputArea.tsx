@@ -1,7 +1,7 @@
 import React, { useCallback, useState, useRef, useEffect } from 'react';
-import { 
-  Upload, FileJson, Check, AlertCircle, 
-  Code, Network, Wand2, Braces, Minimize2, ArrowRightLeft, 
+import {
+  Upload, FileJson, Check, AlertCircle,
+  Code, Network, Wand2, Braces, Minimize2, ArrowRightLeft,
   FileCode2, Trash2, ShieldAlert, Copy, Columns, Search, X,
   Zap, ClipboardPaste, Quote, FileText, ChevronsUpDown, ChevronsDownUp
 } from 'lucide-react';
@@ -32,15 +32,15 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
   const [isSplitView, setIsSplitView] = useState(() => typeof window !== 'undefined' && window.innerWidth > 1024);
   const [activePane, setActivePane] = useState<'editor' | 'tree'>('editor');
   const [autoFlatten, setAutoFlatten] = useState(false);
-  
+
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Search State
   const [showTreeSearch, setShowTreeSearch] = useState(false);
   const [treeSearchTerm, setTreeSearchTerm] = useState('');
   const treeSearchInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Tree View State
   const [expandAllSignal, setExpandAllSignal] = useState(0);
   const [collapseAllSignal, setCollapseAllSignal] = useState(0);
@@ -89,18 +89,18 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
   const [errorLoc, setErrorLoc] = useState<ErrorLoc | null>(null);
   const [stats, setStats] = useState<JsonStats | null>(null);
   const [parsedJson, setParsedJson] = useState<any>(null);
-  
+
   // Bot Protection State
   const [honeypot, setHoneypot] = useState('');
   const mountTime = useRef(Date.now());
-  
+
   // Monaco Ref
   const editorRef = useRef<any>(null);
   const decorationIdsRef = useRef<string[]>([]);
 
   // Active Error Helper
   const activeError = parentError || localError;
-  
+
   // Detect dark mode from html class
   const [isDarkMode, setIsDarkMode] = useState(false);
   useEffect(() => {
@@ -116,7 +116,7 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
   const handleProcessClick = useCallback(() => {
     // Basic bot protection check
     const status = checkBotAndRateLimit(honeypot, mountTime.current, 'convert');
-    
+
     if (status.blocked) {
       if (status.reason === 'rate_limit') {
         alert("You are making requests too quickly. Please wait a moment.");
@@ -171,46 +171,46 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
 
       // Ctrl + C: Smart Copy (Copy All if no selection)
       if (isCmdOrCtrl && e.key.toLowerCase() === 'c') {
-         // Check standard DOM selection
-         const domSelection = window.getSelection()?.toString();
-         
-         // Check Monaco selection if focused
-         let monacoHasSelection = false;
-         if (editorRef.current && editorRef.current.hasTextFocus()) {
-             const selection = editorRef.current.getSelection();
-             if (selection && !selection.isEmpty()) {
-                 monacoHasSelection = true;
-             }
-         }
+        // Check standard DOM selection
+        const domSelection = window.getSelection()?.toString();
 
-         // Only trigger Copy All if NO text is selected anywhere
-         if (!domSelection && !monacoHasSelection && value) {
-             e.preventDefault();
-             copyToClipboard();
-             return;
-         }
+        // Check Monaco selection if focused
+        let monacoHasSelection = false;
+        if (editorRef.current && editorRef.current.hasTextFocus()) {
+          const selection = editorRef.current.getSelection();
+          if (selection && !selection.isEmpty()) {
+            monacoHasSelection = true;
+          }
+        }
+
+        // Only trigger Copy All if NO text is selected anywhere
+        if (!domSelection && !monacoHasSelection && value) {
+          e.preventDefault();
+          copyToClipboard();
+          return;
+        }
       }
 
       // Ctrl + X: Smart Clear (Clear All if no selection)
       if (isCmdOrCtrl && e.key.toLowerCase() === 'x') {
-         // Check standard DOM selection
-         const domSelection = window.getSelection()?.toString();
-         
-         // Check Monaco selection if focused
-         let monacoHasSelection = false;
-         if (editorRef.current && editorRef.current.hasTextFocus()) {
-             const selection = editorRef.current.getSelection();
-             if (selection && !selection.isEmpty()) {
-                 monacoHasSelection = true;
-             }
-         }
+        // Check standard DOM selection
+        const domSelection = window.getSelection()?.toString();
 
-         // Only trigger Clear All if NO text is selected anywhere (avoids accidental clears when trying to Cut)
-         if (!domSelection && !monacoHasSelection && value) {
-             e.preventDefault();
-             clearInput();
-             return;
-         }
+        // Check Monaco selection if focused
+        let monacoHasSelection = false;
+        if (editorRef.current && editorRef.current.hasTextFocus()) {
+          const selection = editorRef.current.getSelection();
+          if (selection && !selection.isEmpty()) {
+            monacoHasSelection = true;
+          }
+        }
+
+        // Only trigger Clear All if NO text is selected anywhere (avoids accidental clears when trying to Cut)
+        if (!domSelection && !monacoHasSelection && value) {
+          e.preventDefault();
+          clearInput();
+          return;
+        }
       }
 
       // Ctrl + F: Search
@@ -246,7 +246,7 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
           }
         }
       }
-      
+
       if (e.key === 'Escape' && showTreeSearch) {
         setShowTreeSearch(false);
         setTreeSearchTerm('');
@@ -255,7 +255,7 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [mode, isSplitView, showTreeSearch, value, handleProcessClick, activePane, activeError, copyToClipboard, clearInput]); 
+  }, [mode, isSplitView, showTreeSearch, value, handleProcessClick, activePane, activeError, copyToClipboard, clearInput]);
 
   // Live Validation & Stats
   useEffect(() => {
@@ -268,14 +268,14 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
       setParsedJson(null);
       return;
     }
-    
+
     const timer = setTimeout(() => {
       try {
         const parsed = JSON.parse(value);
         setParsedJson(parsed);
         const newStats = getJsonStats(parsed);
         setStats(newStats);
-        
+
         if (autoFlatten) {
           // We can't call handleProcessClick here easily without loop or structure change.
           // But autoFlatten usually implies just re-rendering stats or parsed data for table?
@@ -287,13 +287,13 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
         setErrorSuggestion(analyzeJsonError(e, value));
         setStats(null);
         setParsedJson(null);
-        
+
         const match = e.message.match(/position (\d+)/);
         if (match && match[1]) {
           const pos = parseInt(match[1], 10);
           setErrorLoc(getErrorLocation(value, pos));
         } else {
-            setErrorLoc(null);
+          setErrorLoc(null);
         }
       }
     }, 300);
@@ -305,48 +305,48 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
   useEffect(() => {
     if (editorRef.current) {
       if (activeError && errorLoc) {
-         if (mode === 'code' || isSplitView) {
-            editorRef.current.revealPositionInCenter({ 
-              lineNumber: errorLoc.line, 
-              column: errorLoc.column 
-            });
-         }
-         
-         const newDecorations = [
-            {
-               range: {
-                 startLineNumber: errorLoc.line,
-                 startColumn: errorLoc.column,
-                 endLineNumber: errorLoc.line,
-                 endColumn: errorLoc.column + 1
-               },
-               options: {
-                 isWholeLine: false,
-                 className: 'monaco-error-highlighter cursor-help',
-                 hoverMessage: { value: `**Error**: ${activeError}` },
-                 glyphMarginClassName: 'bg-red-500 rounded-full w-3 h-3 ml-1 mt-1', // Error dot in gutter
-                 minimap: { color: '#ef4444', position: 1 } // Highlight in minimap
-               }
+        if (mode === 'code' || isSplitView) {
+          editorRef.current.revealPositionInCenter({
+            lineNumber: errorLoc.line,
+            column: errorLoc.column
+          });
+        }
+
+        const newDecorations = [
+          {
+            range: {
+              startLineNumber: errorLoc.line,
+              startColumn: errorLoc.column,
+              endLineNumber: errorLoc.line,
+              endColumn: errorLoc.column + 1
             },
-            {
-               range: {
-                   startLineNumber: errorLoc.line,
-                   startColumn: 1,
-                   endLineNumber: errorLoc.line,
-                   endColumn: 1
-               },
-               options: {
-                   isWholeLine: true,
-                   className: 'monaco-error-line'
-               }
+            options: {
+              isWholeLine: false,
+              className: 'monaco-error-highlighter cursor-help',
+              hoverMessage: { value: `**Error**: ${activeError}` },
+              glyphMarginClassName: 'bg-red-500 rounded-full w-3 h-3 ml-1 mt-1', // Error dot in gutter
+              minimap: { color: '#ef4444', position: 1 } // Highlight in minimap
             }
-         ];
-         decorationIdsRef.current = editorRef.current.deltaDecorations(decorationIdsRef.current, newDecorations);
+          },
+          {
+            range: {
+              startLineNumber: errorLoc.line,
+              startColumn: 1,
+              endLineNumber: errorLoc.line,
+              endColumn: 1
+            },
+            options: {
+              isWholeLine: true,
+              className: 'monaco-error-line'
+            }
+          }
+        ];
+        decorationIdsRef.current = editorRef.current.deltaDecorations(decorationIdsRef.current, newDecorations);
 
       } else {
-         if (decorationIdsRef.current.length > 0) {
-            decorationIdsRef.current = editorRef.current.deltaDecorations(decorationIdsRef.current, []);
-         }
+        if (decorationIdsRef.current.length > 0) {
+          decorationIdsRef.current = editorRef.current.deltaDecorations(decorationIdsRef.current, []);
+        }
       }
     }
   }, [errorLoc, activeError, mode, isSplitView]);
@@ -376,7 +376,7 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
     const reader = new FileReader();
     reader.onload = (e) => {
       onChange(e.target?.result as string);
-      setMode('code'); 
+      setMode('code');
       if (window.innerWidth > 1024) setIsSplitView(true);
     };
     reader.readAsText(file);
@@ -440,9 +440,9 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
   return (
     <div className="flex flex-col h-full space-y-4">
       {/* Bot Protection: Invisible Honeypot Field */}
-      <input 
-        type="text" 
-        name="website_hp_field" 
+      <input
+        type="text"
+        name="website_hp_field"
         value={honeypot}
         onChange={(e) => setHoneypot(e.target.value)}
         style={{ opacity: 0, position: 'absolute', top: 0, left: 0, height: 0, width: 0, zIndex: -1, pointerEvents: 'none' }}
@@ -456,43 +456,39 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
         <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto max-w-full">
           <button
             onClick={() => { setMode('code'); setIsSplitView(false); }}
-            className={`flex items-center px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
-              mode === 'code' && !isSplitView
-                ? 'bg-white dark:bg-gray-700 text-primary shadow-sm' 
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
+            className={`flex items-center px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${mode === 'code' && !isSplitView
+              ? 'bg-white dark:bg-gray-700 text-primary shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
           >
             <Code size={16} className="mr-2" /> Code
           </button>
           <button
             onClick={() => setMode('upload')}
-            className={`flex items-center px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
-              mode === 'upload' 
-                ? 'bg-white dark:bg-gray-700 text-primary shadow-sm' 
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
+            className={`flex items-center px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${mode === 'upload'
+              ? 'bg-white dark:bg-gray-700 text-primary shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
           >
             <Upload size={16} className="mr-2" /> Upload
           </button>
-          
+
           <button
             onClick={() => { setMode('tree'); setIsSplitView(false); }}
-             className={`flex items-center px-4 py-1.5 rounded-md text-sm font-medium transition-all lg:hidden whitespace-nowrap ${
-              mode === 'tree' 
-                ? 'bg-white dark:bg-gray-700 text-primary shadow-sm' 
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
+            className={`flex items-center px-4 py-1.5 rounded-md text-sm font-medium transition-all lg:hidden whitespace-nowrap ${mode === 'tree'
+              ? 'bg-white dark:bg-gray-700 text-primary shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
           >
             <Network size={16} className="mr-2" /> Tree
           </button>
 
           <button
             onClick={() => { setIsSplitView(!isSplitView); setMode('code'); }}
-            className={`hidden lg:flex items-center px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
-              isSplitView
-                ? 'bg-white dark:bg-gray-700 text-primary shadow-sm' 
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
+            className={`hidden lg:flex items-center px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${isSplitView
+              ? 'bg-white dark:bg-gray-700 text-primary shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
             title="Split View (Editor + Tree)"
           >
             <Columns size={16} className="mr-2" /> Split
@@ -501,69 +497,67 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
 
         {(mode === 'code' || isSplitView) && (
           <div className="flex flex-wrap gap-1 items-center">
-             <button
-                onClick={() => setAutoFlatten(!autoFlatten)}
-                className={`p-2 rounded transition-colors mr-1 border ${
-                  autoFlatten 
-                    ? 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700' 
-                    : 'text-gray-400 border-transparent hover:bg-gray-100 dark:hover:bg-gray-700'
+            <button
+              onClick={() => setAutoFlatten(!autoFlatten)}
+              className={`p-2 rounded transition-colors mr-1 border ${autoFlatten
+                ? 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700'
+                : 'text-gray-400 border-transparent hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
-                title={`Auto-Flatten is ${autoFlatten ? 'ON' : 'OFF'}`}
-             >
-               <Zap size={16} className={autoFlatten ? 'fill-current' : ''} />
-             </button>
+              title={`Auto-Flatten is ${autoFlatten ? 'ON' : 'OFF'}`}
+            >
+              <Zap size={16} className={autoFlatten ? 'fill-current' : ''} />
+            </button>
 
-             <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1 self-center" />
+            <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1 self-center" />
 
-             <button onClick={handlePaste} title="Paste from Clipboard" className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors sm:hidden">
-                <ClipboardPaste size={16} />
-             </button>
+            <button onClick={handlePaste} title="Paste from Clipboard" className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors sm:hidden">
+              <ClipboardPaste size={16} />
+            </button>
 
-             <button onClick={formatJson} disabled={!!activeError && !parsedJson} title="Format (Prettify)" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded disabled:opacity-30 transition-colors">
-                <Braces size={14} />
-                <span className="hidden lg:inline">Format</span>
-             </button>
-             <button onClick={minifyJson} disabled={!!activeError} title="Minify (Remove spaces)" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded disabled:opacity-30 transition-colors">
-                <Minimize2 size={14} />
-                <span className="hidden lg:inline">Minify</span>
-             </button>
-             
-             <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1 self-center" />
+            <button onClick={formatJson} disabled={!!activeError && !parsedJson} title="Format (Prettify)" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded disabled:opacity-30 transition-colors">
+              <Braces size={14} />
+              <span className="hidden lg:inline">Format</span>
+            </button>
+            <button onClick={minifyJson} disabled={!!activeError} title="Minify (Remove spaces)" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded disabled:opacity-30 transition-colors">
+              <Minimize2 size={14} />
+              <span className="hidden lg:inline">Minify</span>
+            </button>
 
-             <button onClick={handleFixJson} title="Auto fix missing brackets, quotes, and commas" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors ring-1 ring-blue-100 dark:ring-blue-900">
-                <Wand2 size={14} />
-                <span className="hidden lg:inline">Auto-Fix</span>
-             </button>
-             <button onClick={handleUnescape} title="Unescape JSON string (remove backslashes)" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
-                <FileText size={14} />
-                <span className="hidden lg:inline">Unescape</span>
-             </button>
-             <button onClick={handleEscape} title="Escape JSON into a string (add backslashes)" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
-                <Quote size={14} />
-                <span className="hidden lg:inline">Escape</span>
-             </button>
-             <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1 self-center" />
-             <button onClick={copyToClipboard} title="Copy All (Ctrl+C if no selection)" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
-                {copySuccess ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
-                <span className="hidden lg:inline">{copySuccess ? 'Copied!' : 'Copy'}</span>
-             </button>
-             <button onClick={clearInput} title="Clear All (Ctrl+X if no selection)" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors">
-                <Trash2 size={14} />
-                <span className="hidden lg:inline">Clear</span>
-             </button>
+            <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1 self-center" />
+
+            <button onClick={handleFixJson} title="Auto fix missing brackets, quotes, and commas" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors ring-1 ring-blue-100 dark:ring-blue-900">
+              <Wand2 size={14} />
+              <span className="hidden lg:inline">Auto-Fix</span>
+            </button>
+            <button onClick={handleUnescape} title="Unescape JSON string (remove backslashes)" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
+              <FileText size={14} />
+              <span className="hidden lg:inline">Unescape</span>
+            </button>
+            <button onClick={handleEscape} title="Escape JSON into a string (add backslashes)" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
+              <Quote size={14} />
+              <span className="hidden lg:inline">Escape</span>
+            </button>
+            <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1 self-center" />
+            <button onClick={copyToClipboard} title="Copy All (Ctrl+C if no selection)" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
+              {copySuccess ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+              <span className="hidden lg:inline">{copySuccess ? 'Copied!' : 'Copy'}</span>
+            </button>
+            <button onClick={clearInput} title="Clear All (Ctrl+X if no selection)" className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors">
+              <Trash2 size={14} />
+              <span className="hidden lg:inline">Clear</span>
+            </button>
           </div>
         )}
       </div>
 
       {/* Editor / Viewer Container */}
-      <div 
-        className={`flex-1 min-h-0 relative rounded-xl border-2 transition-colors duration-200 overflow-hidden flex shadow-inner ${
-          isDragOver 
-            ? 'border-primary bg-blue-50 dark:bg-blue-900/20' 
-            : activeError 
-              ? 'border-red-300 dark:border-red-800 bg-white dark:bg-dark-secondary'
-              : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-secondary'
-        }`}
+      <div
+        className={`flex-1 min-h-0 relative rounded-xl border-2 transition-colors duration-200 overflow-hidden flex shadow-inner ${isDragOver
+          ? 'border-primary bg-blue-50 dark:bg-blue-900/20'
+          : activeError
+            ? 'border-red-300 dark:border-red-800 bg-white dark:bg-dark-secondary'
+            : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-secondary'
+          }`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -581,140 +575,139 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
 
         {/* --- LEFT PANE (Editor) --- */}
         {(mode === 'code' || isSplitView) && (
-            <div 
-              className={`flex flex-col relative h-full group ${isSplitView ? 'w-1/2 border-r border-gray-200 dark:border-gray-700' : 'w-full'}`}
-              onClick={() => setActivePane('editor')}
-            >
-              <div className="flex-1 min-h-0 relative overflow-hidden">
-                <MonacoEditor 
-                  value={value} 
-                  onChange={(val) => onChange(val || '')} 
-                  theme={isDarkMode ? 'dark' : 'light'}
-                  onMount={handleEditorMount}
-                  options={{
-                    glyphMargin: true, // Enable gutter for error icons
-                    lineDecorationsWidth: 10,
-                    lineNumbersMinChars: 3
-                  }}
-                />
-                
-                {/* Empty State Overlay */}
-                {!value && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                     <div className="text-gray-300 dark:text-gray-600 flex flex-col items-center">
-                        <FileJson className="w-12 h-12 mb-2 opacity-50" />
-                        <span className="text-lg font-medium">Paste JSON here</span>
-                        <span className="text-xs mt-1">or Drag & Drop file</span>
-                     </div>
-                  </div>
-                )}
-              </div>
-              
-              {/* Status Bar */}
-              <div className={`flex-none px-4 py-2 text-xs flex justify-between items-center border-t transition-colors duration-200 ${
-                activeError 
-                  ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-200' 
-                  : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400'
-              }`}>
-                <div className="flex items-center gap-3 overflow-hidden w-full">
-                  {activeError ? <ShieldAlert size={16} className="shrink-0 text-red-600 dark:text-red-400" /> : <Check size={14} className="text-green-500 shrink-0" />}
-                  
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 truncate w-full">
-                    <span className={`font-mono font-bold ${activeError ? 'text-red-700 dark:text-red-300' : 'text-green-600 dark:text-green-400'}`}>
-                      {activeError ? 'Invalid JSON' : (value.trim() ? 'Valid JSON' : 'Empty')}
-                    </span>
-                    
-                    {activeError && (
-                      <div className="flex flex-wrap gap-2 items-center text-red-600 dark:text-red-300 w-full overflow-hidden">
-                        {errorLoc && (
-                          <span className="font-mono bg-red-100 dark:bg-red-800/50 px-1.5 py-0.5 rounded text-red-800 dark:text-red-100 shrink-0 border border-red-200 dark:border-red-700">
-                            Ln {errorLoc.line}, Col {errorLoc.column}
-                          </span>
-                        )}
-                        <span className="truncate flex-1" title={activeError}>
-                           {activeError}
-                        </span>
-                        {errorSuggestion && (
-                           <span className="hidden md:inline-block text-red-700 dark:text-red-200 font-medium bg-red-100 dark:bg-red-900/40 px-2 py-0.5 rounded border-l-2 border-red-500">
-                             💡 {errorSuggestion}
-                           </span>
-                        )}
-                      </div>
-                    )}
+          <div
+            className={`flex flex-col relative h-full group ${isSplitView ? 'w-1/2 border-r border-gray-200 dark:border-gray-700' : 'w-full'}`}
+            onClick={() => setActivePane('editor')}
+          >
+            <div className="flex-1 min-h-0 relative overflow-hidden">
+              <MonacoEditor
+                value={value}
+                onChange={(val) => onChange(val || '')}
+                theme={isDarkMode ? 'dark' : 'light'}
+                onMount={handleEditorMount}
+                options={{
+                  glyphMargin: true, // Enable gutter for error icons
+                  lineDecorationsWidth: 10,
+                  lineNumbersMinChars: 3
+                }}
+              />
+
+              {/* Empty State Overlay */}
+              {!value && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="text-gray-300 dark:text-gray-600 flex flex-col items-center">
+                    <FileJson className="w-12 h-12 mb-2 opacity-50" />
+                    <span className="text-lg font-medium">Paste JSON here</span>
+                    <span className="text-xs mt-1">or Drag & Drop file</span>
                   </div>
                 </div>
-                
-                {stats && !activeError && (
-                  <div className="hidden sm:flex gap-4 font-mono">
-                    <span title="File Size">💾 {stats.size}</span>
-                    <span title="Total Keys">🔑 {stats.keys}</span>
-                    <span title="Nesting Depth">📚 {stats.depth}</span>
-                    <span title="Objects">📦 {stats.objects}</span>
-                    <span title="Arrays">📋 {stats.arrays}</span>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
+
+            {/* Status Bar */}
+            <div className={`flex-none px-4 py-2 text-xs flex justify-between items-center border-t transition-colors duration-200 ${activeError
+              ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-200'
+              : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400'
+              }`}>
+              <div className="flex items-center gap-3 overflow-hidden w-full">
+                {activeError ? <ShieldAlert size={16} className="shrink-0 text-red-600 dark:text-red-400" /> : <Check size={14} className="text-green-500 shrink-0" />}
+
+                <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 truncate w-full">
+                  <span className={`font-mono font-bold ${activeError ? 'text-red-700 dark:text-red-300' : 'text-green-600 dark:text-green-400'}`}>
+                    {activeError ? 'Invalid JSON' : (value.trim() ? 'Valid JSON' : 'Empty')}
+                  </span>
+
+                  {activeError && (
+                    <div className="flex flex-wrap gap-2 items-center text-red-600 dark:text-red-300 w-full overflow-hidden">
+                      {errorLoc && (
+                        <span className="font-mono bg-red-100 dark:bg-red-800/50 px-1.5 py-0.5 rounded text-red-800 dark:text-red-100 shrink-0 border border-red-200 dark:border-red-700">
+                          Ln {errorLoc.line}, Col {errorLoc.column}
+                        </span>
+                      )}
+                      <span className="truncate flex-1" title={activeError}>
+                        {activeError}
+                      </span>
+                      {errorSuggestion && (
+                        <span className="hidden md:inline-block text-red-700 dark:text-red-200 font-medium bg-red-100 dark:bg-red-900/40 px-2 py-0.5 rounded border-l-2 border-red-500">
+                          💡 {errorSuggestion}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {stats && !activeError && (
+                <div className="hidden sm:flex gap-4 font-mono">
+                  <span title="File Size">💾 {stats.size}</span>
+                  <span title="Total Keys">🔑 {stats.keys}</span>
+                  <span title="Nesting Depth">📚 {stats.depth}</span>
+                  <span title="Objects">📦 {stats.objects}</span>
+                  <span title="Arrays">📋 {stats.arrays}</span>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {/* --- RIGHT PANE (Tree View) --- */}
         {(mode === 'tree' || isSplitView) && (
-          <div 
-             className={`flex flex-col h-full bg-gray-50 dark:bg-black/20 ${isSplitView ? 'w-1/2' : 'w-full'}`}
-             onClick={() => setActivePane('tree')}
+          <div
+            className={`flex flex-col h-full bg-gray-50 dark:bg-black/20 ${isSplitView ? 'w-1/2' : 'w-full'}`}
+            onClick={() => setActivePane('tree')}
           >
-             <div className="flex-none h-10 border-b border-gray-200 dark:border-gray-700 flex items-center px-2 bg-gray-100 dark:bg-gray-800/50 justify-between">
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-2">JSON Tree</span>
-                <div className="flex items-center gap-2">
-                   <button
-                     onClick={handleToggleExpand}
-                     className="p-1.5 text-gray-500 hover:text-primary hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-                     title={isTreeExpanded ? "Collapse All" : "Expand All"}
-                   >
-                     {isTreeExpanded ? <ChevronsDownUp size={16} /> : <ChevronsUpDown size={16} />}
-                   </button>
-                   <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5"></div>
-                   <button
-                     onClick={handleCopyTree}
-                     className="p-1.5 text-gray-500 hover:text-primary hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-                     title="Copy JSON"
-                   >
-                     {treeCopySuccess ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
-                   </button>
-                   <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5"></div>
-                   {showTreeSearch ? (
-                     <div className="flex items-center bg-white dark:bg-gray-900 rounded-md border border-primary/50 overflow-hidden h-7 animate-in fade-in slide-in-from-right-4 duration-200">
-                       <Search size={14} className="text-gray-400 ml-2" />
-                       <input 
-                         ref={treeSearchInputRef}
-                         type="text" 
-                         className="w-32 sm:w-48 text-xs px-2 py-1 outline-none bg-transparent dark:text-white"
-                         placeholder="Find Key/Value..."
-                         value={treeSearchTerm}
-                         onChange={(e) => setTreeSearchTerm(e.target.value)}
-                         onKeyDown={(e) => { e.stopPropagation(); }}
-                       />
-                       <button onClick={() => { setTreeSearchTerm(''); setShowTreeSearch(false); }} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
-                         <X size={14} />
-                       </button>
-                     </div>
-                   ) : (
-                     <button 
-                       onClick={() => { setShowTreeSearch(true); setTimeout(() => treeSearchInputRef.current?.focus(), 50); }}
-                       className="p-1.5 text-gray-500 hover:text-primary hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-                       title="Search Tree (Ctrl+F)"
-                     >
-                       <Search size={16} />
-                     </button>
-                   )}
-                </div>
-             </div>
+            <div className="flex-none h-10 border-b border-gray-200 dark:border-gray-700 flex items-center px-2 bg-gray-100 dark:bg-gray-800/50 justify-between">
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-2">JSON Tree</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleToggleExpand}
+                  className="p-1.5 text-gray-500 hover:text-primary hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                  title={isTreeExpanded ? "Collapse All" : "Expand All"}
+                >
+                  {isTreeExpanded ? <ChevronsDownUp size={16} /> : <ChevronsUpDown size={16} />}
+                </button>
+                <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5"></div>
+                <button
+                  onClick={handleCopyTree}
+                  className="p-1.5 text-gray-500 hover:text-primary hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                  title="Copy JSON"
+                >
+                  {treeCopySuccess ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+                </button>
+                <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5"></div>
+                {showTreeSearch ? (
+                  <div className="flex items-center bg-white dark:bg-gray-900 rounded-md border border-primary/50 overflow-hidden h-7 animate-in fade-in slide-in-from-right-4 duration-200">
+                    <Search size={14} className="text-gray-400 ml-2" />
+                    <input
+                      ref={treeSearchInputRef}
+                      type="text"
+                      className="w-32 sm:w-48 text-xs px-2 py-1 outline-none bg-transparent dark:text-white"
+                      placeholder="Find Key/Value..."
+                      value={treeSearchTerm}
+                      onChange={(e) => setTreeSearchTerm(e.target.value)}
+                      onKeyDown={(e) => { e.stopPropagation(); }}
+                    />
+                    <button onClick={() => { setTreeSearchTerm(''); setShowTreeSearch(false); }} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setShowTreeSearch(true); setTimeout(() => treeSearchInputRef.current?.focus(), 50); }}
+                    className="p-1.5 text-gray-500 hover:text-primary hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                    title="Search Tree (Ctrl+F)"
+                  >
+                    <Search size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
 
-             <div className="flex-1 overflow-auto p-0 relative">
+            <div id="tree-pane-scroll" className="flex-1 min-h-0 overflow-auto p-0 relative scrollbar-visible">
               {parsedJson ? (
-                <JsonTreeView 
-                  data={parsedJson} 
-                  searchTerm={treeSearchTerm} 
+                <JsonTreeView
+                  data={parsedJson}
+                  searchTerm={treeSearchTerm}
                   expandAllSignal={expandAllSignal}
                   collapseAllSignal={collapseAllSignal}
                 />
@@ -747,8 +740,8 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
                 className="hidden"
                 onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
               />
-              <Button 
-                variant="primary" 
+              <Button
+                variant="primary"
                 onClick={() => fileInputRef.current?.click()}
                 icon={<FileJson size={18} />}
                 size="lg"
@@ -764,9 +757,9 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
       </div>
 
       <div className="flex-none flex justify-end pt-2">
-        <Button 
-          onClick={handleProcessClick} 
-          disabled={!value.trim() || !!activeError} 
+        <Button
+          onClick={handleProcessClick}
+          disabled={!value.trim() || !!activeError}
           isLoading={isProcessing}
           className="w-full sm:w-auto shadow-lg shadow-blue-500/20"
           size="lg"

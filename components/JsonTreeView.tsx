@@ -27,11 +27,11 @@ const getType = (value: any) => {
 
 const HighlightedText: React.FC<{ text: string; term?: string; isCurrent?: boolean }> = ({ text, term, isCurrent }) => {
   if (!term) return <>{text}</>;
-  
+
   const parts = text.split(new RegExp(`(${term})`, 'gi'));
   return (
     <>
-      {parts.map((part, i) => 
+      {parts.map((part, i) =>
         part.toLowerCase() === term.toLowerCase() ? (
           <span key={i} className={`${isCurrent ? 'bg-orange-400 text-white' : 'bg-yellow-200 dark:bg-yellow-900 text-black dark:text-white'} font-bold px-0.5 rounded`}>{part}</span>
         ) : (
@@ -45,7 +45,7 @@ const HighlightedText: React.FC<{ text: string; term?: string; isCurrent?: boole
 const JsonNode: React.FC<JsonNodeProps> = ({ data, name, isLast = true, searchTerm = '', path, currentMatchPath, expandAllSignal, collapseAllSignal }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const nodeRef = useRef<HTMLDivElement>(null);
-  
+
   useEffect(() => {
     if (expandAllSignal && expandAllSignal > 0) {
       setIsExpanded(true);
@@ -57,7 +57,7 @@ const JsonNode: React.FC<JsonNodeProps> = ({ data, name, isLast = true, searchTe
       setIsExpanded(false);
     }
   }, [collapseAllSignal]);
-  
+
   // Check if this node is the current match
   const isCurrentKeyMatch = currentMatchPath === path + '#key';
   const isCurrentValueMatch = currentMatchPath === path + '#value';
@@ -74,7 +74,7 @@ const JsonNode: React.FC<JsonNodeProps> = ({ data, name, isLast = true, searchTe
   const hasMatchInChildren = useMemo(() => {
     if (!searchTerm) return false;
     if (typeof data !== 'object' || data === null) return false;
-    
+
     // Simple check: if JSON string of data includes search term
     const s = JSON.stringify(data).toLowerCase();
     return s.includes(searchTerm.toLowerCase());
@@ -102,7 +102,7 @@ const JsonNode: React.FC<JsonNodeProps> = ({ data, name, isLast = true, searchTe
 
   if (!isObject) {
     return (
-      <div 
+      <div
         ref={nodeRef}
         className={`font-mono text-sm pl-4 py-0.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded flex group ${isCurrentNode ? 'bg-blue-50 dark:bg-blue-900/30 ring-1 ring-blue-300 dark:ring-blue-700' : (isValueMatch || isKeyMatch) ? 'bg-yellow-50 dark:bg-yellow-900/10' : ''}`}
       >
@@ -113,12 +113,11 @@ const JsonNode: React.FC<JsonNodeProps> = ({ data, name, isLast = true, searchTe
             </>
           )}
         </span>
-        <span className={`${
-          type === 'string' ? 'text-green-600 dark:text-green-400' :
+        <span className={`${type === 'string' ? 'text-green-600 dark:text-green-400' :
           type === 'number' ? 'text-blue-600 dark:text-blue-400' :
-          type === 'boolean' ? 'text-orange-600 dark:text-orange-400' :
-          'text-gray-500'
-        }`}>
+            type === 'boolean' ? 'text-orange-600 dark:text-orange-400' :
+              'text-gray-500'
+          }`}>
           {type === 'string' ? '"' : ''}
           <HighlightedText text={String(data)} term={searchTerm} isCurrent={isCurrentValueMatch} />
           {type === 'string' ? '"' : ''}
@@ -130,7 +129,7 @@ const JsonNode: React.FC<JsonNodeProps> = ({ data, name, isLast = true, searchTe
 
   return (
     <div className={`font-mono text-sm pl-4 ${isKeyMatch ? 'bg-yellow-50 dark:bg-yellow-900/10 rounded' : ''}`}>
-      <div 
+      <div
         ref={isKeyMatch ? nodeRef : null}
         className={`flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 py-0.5 rounded group ${isCurrentKeyMatch ? 'bg-blue-50 dark:bg-blue-900/30 ring-1 ring-blue-300 dark:ring-blue-700' : ''}`}
         onClick={() => setIsExpanded(!isExpanded)}
@@ -138,19 +137,19 @@ const JsonNode: React.FC<JsonNodeProps> = ({ data, name, isLast = true, searchTe
         <span className="text-gray-400 mr-1 w-4 flex justify-center">
           {!isEmpty && (isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
         </span>
-        
+
         <span className="text-purple-600 dark:text-purple-400 mr-1">
           {name && (
-             <>
-               "<HighlightedText text={name} term={searchTerm} isCurrent={isCurrentKeyMatch} />":
-             </>
+            <>
+              "<HighlightedText text={name} term={searchTerm} isCurrent={isCurrentKeyMatch} />":
+            </>
           )}
         </span>
-        
+
         <span className="text-gray-600 dark:text-gray-300">
           {type === 'array' ? '[' : '{'}
         </span>
-        
+
         {!isExpanded && (
           <span className="text-gray-400 text-xs mx-2">
             {type === 'array' ? `Array(${keys.length})` : `Object({${keys.length}})`} ...
@@ -164,7 +163,7 @@ const JsonNode: React.FC<JsonNodeProps> = ({ data, name, isLast = true, searchTe
           </span>
         )}
 
-        <button 
+        <button
           onClick={handleCopy}
           className="ml-auto opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-primary transition-opacity"
           title="Copy Value"
@@ -176,10 +175,10 @@ const JsonNode: React.FC<JsonNodeProps> = ({ data, name, isLast = true, searchTe
       {isExpanded && !isEmpty && (
         <div className="border-l border-gray-200 dark:border-gray-700 ml-2">
           {keys.map((key, idx) => (
-            <JsonNode 
-              key={key} 
-              name={type === 'array' ? undefined : key} 
-              data={data[key]} 
+            <JsonNode
+              key={key}
+              name={type === 'array' ? undefined : key}
+              data={data[key]}
               isLast={idx === keys.length - 1}
               searchTerm={searchTerm}
               path={`${path}.${key}`}
@@ -219,9 +218,9 @@ const findAllMatches = (data: any, term: string, path: string = 'root', matches:
     const currentPath = `${path}.${key}`;
     // Check key match
     if (!Array.isArray(data) && key.toLowerCase().includes(lowerTerm)) {
-       matches.push(currentPath + '#key'); 
+      matches.push(currentPath + '#key');
     }
-    
+
     findAllMatches(data[key], term, currentPath, matches);
   });
 
@@ -252,7 +251,7 @@ export default function JsonTreeView({ data, searchTerm, expandAllSignal, collap
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div>
       {/* Search Navigation Bar */}
       {searchTerm && matches.length > 0 && (
         <div className="flex-none bg-yellow-50 dark:bg-yellow-900/20 p-2 flex items-center justify-between text-xs border-b border-yellow-100 dark:border-yellow-900/30">
@@ -272,12 +271,12 @@ export default function JsonTreeView({ data, searchTerm, expandAllSignal, collap
           </div>
         </div>
       )}
-      
-      <div className="flex-1 p-4 bg-white dark:bg-dark-secondary rounded-none lg:rounded-br-xl overflow-auto">
-        <JsonNode 
-          data={data} 
-          isLast={true} 
-          searchTerm={searchTerm} 
+
+      <div className="p-4 min-w-max">
+        <JsonNode
+          data={data}
+          isLast={true}
+          searchTerm={searchTerm}
           path="root"
           currentMatchPath={matches[currentMatchIdx]}
           expandAllSignal={expandAllSignal}

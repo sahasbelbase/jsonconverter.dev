@@ -9,9 +9,10 @@ import { minifyHTML } from '../utils/formatUtils';
 interface HtmlViewerProps {
   value: string;
   onChange: (val: string) => void;
+  onError?: (message: string) => void;
 }
 
-const HtmlViewer: React.FC<HtmlViewerProps> = ({ value, onChange }) => {
+const HtmlViewer: React.FC<HtmlViewerProps> = ({ value, onChange, onError }) => {
   const [isSplitView, setIsSplitView] = useState(() => typeof window !== 'undefined' && window.innerWidth > 1024);
   const [activePane, setActivePane] = useState<'editor' | 'preview'>('editor');
   const [isDragOver, setIsDragOver] = useState(false);
@@ -53,7 +54,7 @@ const HtmlViewer: React.FC<HtmlViewerProps> = ({ value, onChange }) => {
 
   const handleFile = (file: File) => {
     if (!file.name.match(/\.(html|htm|txt)$/) && file.type !== 'text/html') {
-      alert("Please upload a valid HTML file.");
+      onError?.(`“${file.name}” is not a HTML file (.html, .htm).`);
       return;
     }
     const reader = new FileReader();
@@ -93,7 +94,7 @@ const HtmlViewer: React.FC<HtmlViewerProps> = ({ value, onChange }) => {
   };
 
   return (
-    <div className="flex flex-col h-full space-y-4">
+    <div className="flex flex-col flex-1 min-h-0 space-y-4">
       {/* Toolbar */}
       <div className="flex-none flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-dark-secondary p-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
         <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto max-w-full">

@@ -8,9 +8,10 @@ import { formatXML, minifyXML } from '../utils/formatUtils';
 interface XmlViewerProps {
   value: string;
   onChange: (val: string) => void;
+  onError?: (message: string) => void;
 }
 
-const XmlViewer: React.FC<XmlViewerProps> = ({ value, onChange }) => {
+const XmlViewer: React.FC<XmlViewerProps> = ({ value, onChange, onError }) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   
@@ -49,7 +50,7 @@ const XmlViewer: React.FC<XmlViewerProps> = ({ value, onChange }) => {
 
   const handleFile = (file: File) => {
     if (!file.name.match(/\.(xml|txt)$/) && file.type !== 'text/xml' && file.type !== 'application/xml') {
-      alert("Please upload a valid XML file.");
+      onError?.(`“${file.name}” is not a XML file (.xml, .txt).`);
       return;
     }
     const reader = new FileReader();
@@ -78,7 +79,7 @@ const XmlViewer: React.FC<XmlViewerProps> = ({ value, onChange }) => {
   };
 
   return (
-    <div className="flex flex-col h-full space-y-4">
+    <div className="flex flex-col flex-1 min-h-0 space-y-4">
       {/* Toolbar */}
       <div className="flex-none flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-dark-secondary p-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
         <div className="flex items-center gap-2 px-2">

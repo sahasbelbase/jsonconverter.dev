@@ -743,7 +743,7 @@ const JwtDecoder: React.FC<JwtDecoderProps> = ({
   );
 
   return (
-    <div className="flex flex-col h-full gap-4">
+    <div className="flex flex-col flex-1 min-h-0 gap-4">
       {/* Top Bar: Privacy & Mode Switch */}
       <div className="flex-none flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-dark-secondary p-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
          

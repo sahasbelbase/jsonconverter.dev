@@ -1,349 +1,254 @@
+import yaml from 'js-yaml';
+import { XMLBuilder, XMLParser, XMLValidator } from 'fast-xml-parser';
+import Papa from 'papaparse';
 
 /**
- * Simple JSON to YAML Converter
+ * Conversions between JSON and the formats people actually paste around.
+ *
+ * The hand-rolled emitters this file used to contain had three bugs that
+ * silently corrupted data: YAML quoted strings only when they contained
+ * punctuation (so "1.0" came back as a float and "yes" as a boolean), XML
+ * emitted `xsi:nil` without declaring the namespace, and TOML wrote a bare
+ * `key = ` for null. Proven libraries do the escaping now.
  */
-export const toYAML = (data: any): string => {
-  const getType = (obj: any) => {
-    if (obj === null) return 'null';
-    if (Array.isArray(obj)) return 'array';
-    return typeof obj;
+
+export type TargetFormat = 'yaml' | 'xml' | 'toml' | 'csv' | 'properties';
+export type SourceFormat = 'yaml' | 'xml' | 'csv';
+
+// --- JSON out -----------------------------------------------------------------
+
+export const toYAML = (data: unknown): string =>
+  yaml.dump(data, {
+    indent: 2,
+    lineWidth: 120,
+    noRefs: true,
+    // Quote anything that would otherwise be re-read as a number or boolean.
+    quotingType: '"',
+  });
+
+export const toXML = (data: unknown, rootName = 'root'): string => {
+  const builder = new XMLBuilder({
+    format: true,
+    indentBy: '  ',
+    ignoreAttributes: false,
+    suppressEmptyNode: true,
+    // Keys that are not valid XML names would produce unparseable output.
+    processEntities: true,
+  });
+
+  const sanitizeKeys = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(sanitizeKeys);
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(
+        Object.entries(value as Record<string, unknown>).map(([key, val]) => {
+          let safe = key.replace(/[^A-Za-z0-9_.\-]/g, '_');
+          if (!/^[A-Za-z_]/.test(safe)) safe = `_${safe}`;
+          return [safe, sanitizeKeys(val)];
+        })
+      );
+    }
+    // null has no natural XML form; an empty element is the least surprising.
+    return value === null ? '' : value;
   };
 
-  const escapeString = (str: string) => {
-    // If string contains special characters, quote it
-    if (/[:#\[\]\{\},&*!|>'"]/.test(str) || !str.trim()) {
-      return `"${str.replace(/"/g, '\\"')}"`;
-    }
-    return str;
-  };
+  // A top-level array has to be wrapped twice: fast-xml-parser turns an array
+  // value into one element per item, which would give the document several
+  // root nodes and make it unparseable.
+  const payload = Array.isArray(data)
+    ? { [rootName]: { item: sanitizeKeys(data) } }
+    : { [rootName]: sanitizeKeys(data) };
 
-  const convert = (obj: any, indentLevel: number): string => {
-    const indent = '  '.repeat(indentLevel);
-    const type = getType(obj);
-
-    if (type === 'null') return 'null';
-    if (type === 'undefined') return '';
-    if (type !== 'object' && type !== 'array') {
-      return escapeString(String(obj));
-    }
-
-    if (type === 'array') {
-      if (obj.length === 0) return '[]';
-      return obj.map((item: any) => {
-        const itemType = getType(item);
-        const itemStr = convert(item, indentLevel + 1);
-        
-        if (itemType === 'object' || itemType === 'array') {
-           // For objects/arrays inside arrays, the dash is at current indent
-           // but the content starts on the next line or aligned
-           // Standard YAML: 
-           // - key: val
-           return `${indent}- ${itemStr.trimStart()}`;
-        }
-        return `${indent}- ${itemStr}`;
-      }).join('\n');
-    }
-
-    // Object
-    const keys = Object.keys(obj);
-    if (keys.length === 0) return '{}';
-
-    return keys.map((key) => {
-      const val = obj[key];
-      const valType = getType(val);
-      const valStr = convert(val, indentLevel + 1);
-
-      if (valType === 'array' || valType === 'object') {
-        // If it's an empty object/array
-        if (valStr === '[]' || valStr === '{}') {
-             return `${indent}${key}: ${valStr}`;
-        }
-        return `${indent}${key}:\n${valStr}`;
-      }
-      
-      return `${indent}${key}: ${valStr}`;
-    }).join('\n');
-  };
-
-  try {
-    return convert(data, 0);
-  } catch (e) {
-    return `Error converting to YAML: ${(e as Error).message}`;
-  }
+  const body = builder.build(payload);
+  return `<?xml version="1.0" encoding="UTF-8"?>\n${body}`.trimEnd();
 };
 
-/**
- * Simple JSON to XML Converter
- */
-export const toXML = (data: any): string => {
-  const convert = (obj: any, tagName: string = 'root'): string => {
-    if (obj === null || obj === undefined) return `<${tagName} xsi:nil="true"/>`;
-    
-    if (Array.isArray(obj)) {
-      return obj.map(item => convert(item, tagName === 'root' ? 'item' : tagName)).join('');
+const tomlValue = (value: unknown): string => {
+  if (typeof value === 'string') return JSON.stringify(value);
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : 'nan';
+  if (typeof value === 'boolean') return String(value);
+  if (value instanceof Date) return value.toISOString();
+  return JSON.stringify(String(value));
+};
+
+const isPrimitive = (value: unknown): boolean =>
+  value === null || (typeof value !== 'object' && !Array.isArray(value));
+
+export const toTOML = (data: unknown): string => {
+  if (data === null || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('TOML needs an object at the top level.');
+  }
+
+  const skipped: string[] = [];
+
+  const emit = (obj: Record<string, unknown>, path: string): string[] => {
+    const lines: string[] = [];
+    const entries = Object.entries(obj);
+
+    // TOML requires every bare key/value pair to come before any sub-table.
+    for (const [key, value] of entries) {
+      const fullKey = path ? `${path}.${key}` : key;
+      if (value === null || value === undefined) {
+        // TOML has no null. Dropping the key is the only valid choice, so say so.
+        skipped.push(fullKey);
+        continue;
+      }
+      if (isPrimitive(value)) {
+        lines.push(`${key} = ${tomlValue(value)}`);
+      } else if (Array.isArray(value) && value.every((item) => isPrimitive(item) && item !== null)) {
+        lines.push(value.length ? `${key} = [ ${value.map(tomlValue).join(', ')} ]` : `${key} = []`);
+      }
     }
-    
-    if (typeof obj === 'object') {
-      const keys = Object.keys(obj);
-      if (keys.length === 0) return `<${tagName}></${tagName}>`;
-      
-      let inner = '';
-      keys.forEach(key => {
-        // XML tags cannot start with numbers or contain spaces
-        let validKey = key.replace(/[^a-zA-Z0-9_.-]/g, '_');
-        if (/^[0-9]/.test(validKey)) validKey = `_${validKey}`;
-        
-        // Handle array children specifically to avoid double nesting issues if needed
-        // But our recursion handles Array.isArray above. 
-        // If obj[key] is an array, we pass the key as the tag name for the items.
-        
-        if (Array.isArray(obj[key])) {
-             inner += obj[key].map((item: any) => convert(item, validKey)).join('');
-        } else {
-             inner += convert(obj[key], validKey);
+
+    for (const [key, value] of entries) {
+      const fullKey = path ? `${path}.${key}` : key;
+      if (value === null || value === undefined || isPrimitive(value)) continue;
+
+      if (Array.isArray(value)) {
+        if (value.every((item) => isPrimitive(item) && item !== null)) continue;
+        for (const item of value) {
+          if (item && typeof item === 'object' && !Array.isArray(item)) {
+            lines.push('', `[[${fullKey}]]`);
+            // Nested paths stay absolute, which is what TOML requires.
+            lines.push(...emit(item as Record<string, unknown>, fullKey));
+          } else {
+            skipped.push(`${fullKey}[]`);
+          }
         }
-      });
-      
-      if (tagName === 'root' && !inner.startsWith('<')) {
-          // If the root object itself was an array processed above, avoid double root?
-          // But here obj is object.
-          return `<${tagName}>${inner}</${tagName}>`;
-      }
-      
-      // Special case: if we are mapping an array item that is an object, 
-      // the parent called us with the desired tag name.
-      return `<${tagName}>${inner}</${tagName}>`;
-    }
-    
-    // Primitives
-    const safeValue = String(obj)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;');
-      
-    return `<${tagName}>${safeValue}</${tagName}>`;
-  };
-
-  try {
-    const header = '<?xml version="1.0" encoding="UTF-8"?>';
-    
-    // If input is an array, `convert(data, 'root')` returns a list of items <item>...</item>.
-    // Valid XML must have a single root element. We wrap it in <root> if data is an array.
-    if (Array.isArray(data)) {
-        return `${header}\n<root>${convert(data, 'root')}</root>`;
-    }
-    
-    return `${header}\n${convert(data, 'root')}`;
-  } catch (e) {
-    return `Error converting to XML: ${(e as Error).message}`;
-  }
-};
-
-/**
- * Simple JSON to TOML Converter (Best Effort)
- */
-export const toTOML = (data: any): string => {
-  const isPrimitive = (val: any) => val === null || (typeof val !== 'object' && !Array.isArray(val));
-  
-  const formatPrimitive = (val: any): string => {
-    if (typeof val === 'string') return JSON.stringify(val);
-    if (val === null) return ''; // TOML doesn't strictly have null, often omitted
-    return String(val);
-  };
-
-  const convert = (obj: any, prefix = ''): string => {
-    let output = '';
-    
-    // 1. Primitives first
-    for (const key of Object.keys(obj)) {
-      const val = obj[key];
-      if (isPrimitive(val)) {
-        output += `${key} = ${formatPrimitive(val)}\n`;
-      } else if (Array.isArray(val) && val.every(isPrimitive)) {
-        // Inline array of primitives
-        const arrStr = val.map(formatPrimitive).join(', ');
-        output += `${key} = [ ${arrStr} ]\n`;
+      } else {
+        lines.push('', `[${fullKey}]`);
+        lines.push(...emit(value as Record<string, unknown>, fullKey));
       }
     }
-
-    // 2. Tables and Arrays of Tables
-    for (const key of Object.keys(obj)) {
-      const val = obj[key];
-      const fullKey = prefix ? `${prefix}.${key}` : key;
-
-      if (!isPrimitive(val) && !(Array.isArray(val) && val.every(isPrimitive))) {
-         if (Array.isArray(val)) {
-            // Array of Tables [[key]]
-            val.forEach(item => {
-               if (typeof item === 'object' && item !== null) {
-                 output += `\n[[${fullKey}]]\n`;
-                 output += convert(item); // Don't pass prefix, reset context for table
-               }
-            });
-         } else if (typeof val === 'object' && val !== null) {
-            // Table [key]
-            // If the object is empty, we still print the header? Standard says yes if needed.
-            // Check if it has any primitives to print, otherwise it's just intermediate
-            output += `\n[${fullKey}]\n`;
-            output += convert(val, fullKey); // Pass fullKey as prefix for dot notation if we didn't use [sections]
-            // Actually, standard TOML uses [a.b], then keys inside.
-            // My recursive approach here mixes [section] and dotted.keys.
-            // Let's simplify: Recursive calls return body, current level adds header.
-            // The recursor above `convert(val, fullKey)` is wrong for standard TOML structure if we use headers.
-         }
-      }
-    }
-    return output;
-  };
-
-  // TOML generation is complex. This is a simplified linear generator.
-  // We flatten keys using dots or brackets.
-  
-  const tomlify = (obj: any, path: string = ''): string => {
-     let lines: string[] = [];
-     const keys = Object.keys(obj);
-     
-     // Primitives
-     keys.filter(k => isPrimitive(obj[k])).forEach(k => {
-        lines.push(`${k} = ${formatPrimitive(obj[k])}`);
-     });
-     
-     // Arrays of primitives
-     keys.filter(k => Array.isArray(obj[k]) && obj[k].every(isPrimitive)).forEach(k => {
-        const arrStr = (obj[k] as any[]).map(formatPrimitive).join(', ');
-        lines.push(`${k} = [ ${arrStr} ]`);
-     });
-
-     // Nested Objects (Tables)
-     keys.filter(k => typeof obj[k] === 'object' && obj[k] !== null && !Array.isArray(obj[k])).forEach(k => {
-         const newPath = path ? `${path}.${k}` : k;
-         lines.push(`\n[${newPath}]`);
-         lines.push(tomlify(obj[k], newPath));
-     });
-
-     // Arrays of Objects
-     keys.filter(k => Array.isArray(obj[k]) && !obj[k].every(isPrimitive)).forEach(k => {
-         const newPath = path ? `${path}.${k}` : k;
-         (obj[k] as any[]).forEach(item => {
-             lines.push(`\n[[${newPath}]]`);
-             // We reset recursion here because [[table]] sets a new root context
-             // Effectively, inside [[table]], keys are relative to it.
-             // So we pass '' as path? No, `tomlify` logic uses path for [header].
-             // If we are inside [[user]], `name="john"` is correct.
-             // So we call a helper that DOESNT prepend path to keys.
-             lines.push(tomlify(item, '')); 
-             // Wait, if item has nested objects, they become [?]. 
-             // Standard TOML says nested tables inside array tables are [newPath.sub].
-             // This simple recursion breaks for deep nesting in arrays. 
-             // Limitation accepted for "Simple Converter".
-         });
-     });
-
-     return lines.join('\n').trim();
-  };
-
-  try {
-    if (typeof data !== 'object' || data === null) return String(data);
-    return tomlify(data);
-  } catch (e) {
-    return `Error converting to TOML: ${(e as Error).message}`;
-  }
-};
-
-/**
- * Properties / Dot-Notation Text Format
- */
-export const toProperties = (data: any): string => {
-  const flatten = (obj: any, prefix = ''): string[] => {
-    let lines: string[] = [];
-    
-    if (obj === null) {
-      lines.push(`${prefix} = null`);
-      return lines;
-    }
-
-    if (typeof obj !== 'object') {
-      lines.push(`${prefix} = ${obj}`);
-      return lines;
-    }
-
-    if (Array.isArray(obj)) {
-      obj.forEach((item, idx) => {
-        lines = lines.concat(flatten(item, `${prefix}[${idx}]`));
-      });
-      return lines;
-    }
-
-    Object.keys(obj).forEach(key => {
-      const newKey = prefix ? `${prefix}.${key}` : key;
-      lines = lines.concat(flatten(obj[key], newKey));
-    });
 
     return lines;
   };
 
-  try {
-    if (typeof data !== 'object') return String(data);
-    return flatten(data).join('\n');
-  } catch (e) {
-    return `Error converting to Text: ${(e as Error).message}`;
+  const body = emit(data as Record<string, unknown>, '').join('\n').trim();
+  if (!skipped.length) return body;
+
+  const unique = Array.from(new Set(skipped));
+  const note = `# TOML has no null. These keys were omitted: ${unique.join(', ')}\n`;
+  return note + body;
+};
+
+export const toProperties = (data: unknown): string => {
+  const lines: string[] = [];
+
+  const escape = (value: string) =>
+    value.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+
+  const walk = (value: unknown, prefix: string) => {
+    if (value === null) {
+      lines.push(`${prefix}=`);
+      return;
+    }
+    if (typeof value !== 'object') {
+      lines.push(`${prefix}=${escape(String(value))}`);
+      return;
+    }
+    if (Array.isArray(value)) {
+      if (value.length === 0) lines.push(`${prefix}=`);
+      value.forEach((item, i) => walk(item, `${prefix}[${i}]`));
+      return;
+    }
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (entries.length === 0) {
+      lines.push(`${prefix}=`);
+      return;
+    }
+    entries.forEach(([key, val]) => walk(val, prefix ? `${prefix}.${key}` : key));
+  };
+
+  walk(data, '');
+  return lines.join('\n');
+};
+
+export const toCSV = (data: unknown): string => {
+  const rows = Array.isArray(data) ? data : [data];
+  if (!rows.length) return '';
+  if (!rows.every((row) => row && typeof row === 'object' && !Array.isArray(row))) {
+    throw new Error('CSV needs an array of objects (or a single object).');
   }
+  return Papa.unparse(rows as object[], { newline: '\n' });
 };
 
-/**
- * Minify HTML
- */
-export const minifyHTML = (html: string): string => {
-  return html
-    .replace(/<!--[\s\S]*?-->/g, '') // Remove comments
-    .replace(/>\s+</g, '><')          // Remove whitespace between tags
-    .replace(/\s{2,}/g, ' ')          // Collapse multiple whitespace
-    .trim();
+// --- JSON in ------------------------------------------------------------------
+
+export const fromYAML = (text: string): unknown => {
+  const parsed = yaml.load(text, { json: true });
+  if (parsed === undefined) throw new Error('That YAML is empty.');
+  return parsed;
 };
 
-/**
- * Format XML (Simple Indentation)
- */
-export const formatXML = (xml: string): string => {
-  let formatted = '';
-  const reg = /(>)(<)(\/*)/g;
-  const xmlStr = xml.replace(reg, '$1\r\n$2$3');
-  let pad = 0;
-  
-  xmlStr.split('\r\n').forEach((node) => {
-    let indent = 0;
-    if (node.match(/.+<\/\w[^>]*>$/)) {
-      indent = 0;
-    } else if (node.match(/^<\/\w/)) {
-      if (pad !== 0) {
-        pad -= 1;
-      }
-    } else if (node.match(/^<\w[^>]*[^\/]>.*$/)) {
-      indent = 1;
-    } else {
-      indent = 0;
-    }
+export const fromXML = (text: string): unknown => {
+  const validation = XMLValidator.validate(text, { allowBooleanAttributes: true });
+  if (validation !== true) {
+    const { line, col, msg } = validation.err;
+    throw new Error(`Line ${line}, column ${col}: ${msg}`);
+  }
 
-    let padding = '';
-    for (let i = 0; i < pad; i++) {
-      padding += '  ';
-    }
+  const parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: '@',
+    parseAttributeValue: true,
+    trimValues: true,
+    textNodeName: '#text',
+  });
+  return parser.parse(text);
+};
 
-    formatted += padding + node + '\r\n';
-    pad += indent;
+export const fromCSV = (text: string): unknown => {
+  const result = Papa.parse(text.trim(), {
+    header: true,
+    skipEmptyLines: true,
+    dynamicTyping: true,
   });
 
-  return formatted.trim();
+  if (result.errors.length) {
+    const first = result.errors[0];
+    throw new Error(`Row ${(first.row ?? 0) + 1}: ${first.message}`);
+  }
+  return result.data;
 };
 
-/**
- * Minify XML
- */
-export const minifyXML = (xml: string): string => {
-  return xml
+// --- HTML / XML text helpers ---------------------------------------------------
+
+export const minifyHTML = (html: string): string =>
+  html
+    .replace(/<!--(?!\[if)[\s\S]*?-->/g, '')
     .replace(/>\s+</g, '><')
     .replace(/\s{2,}/g, ' ')
     .trim();
+
+/**
+ * Indents XML one element per line.
+ *
+ * Splitting on `><` is safe here because the content between a `>` and a `<`
+ * is either whitespace (which we are reformatting anyway) or a text node, which
+ * is kept on the line of its own element.
+ */
+export const formatXML = (xml: string, indent = '  '): string => {
+  const normalized = xml.replace(/\r\n/g, '\n').replace(/>\s*</g, '>\n<').trim();
+  const lines = normalized.split('\n');
+  let depth = 0;
+  const out: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    const isClosing = /^<\//.test(trimmed);
+    const isSelfClosing = /\/>$/.test(trimmed);
+    const isDeclaration = /^<[?!]/.test(trimmed);
+    const hasInlineClose = /^<[^/][^>]*>.*<\/[^>]+>$/.test(trimmed);
+
+    if (isClosing) depth = Math.max(0, depth - 1);
+    out.push(indent.repeat(depth) + trimmed);
+    if (!isClosing && !isSelfClosing && !isDeclaration && !hasInlineClose) depth++;
+  }
+
+  return out.join('\n');
 };
+
+export const minifyXML = (xml: string): string =>
+  xml.replace(/>\s+</g, '><').replace(/\s{2,}/g, ' ').trim();

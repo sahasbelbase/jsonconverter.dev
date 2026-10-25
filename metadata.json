@@ -1,5 +1,0 @@
-{
-  "name": "JSON to Excel/CSV Converter",
-  "description": "A fast, lightweight, and secure client-side application to convert JSON data into Excel or CSV formats with advanced flattening and preview capabilities.",
-  "requestFramePermissions": []
-}

@@ -1,6 +1,6 @@
 # HANDOFF — jsonconverter.dev
 
-Last updated: 2026-10-25
+Last updated: 2026-10-25 (second pass)
 
 ## What this project is
 
@@ -13,11 +13,12 @@ Local checkout: `/Users/sahas/Documents/Projects/devtools/jsonconverter.dev`
 
 ## State
 
-Branch **`feat/routing-and-tools`**, one commit ahead of `main` (`45ae302`).
+Branch **`feat/routing-and-tools`**, three commits ahead of `main`.
 **Not pushed. No PR.** `main` is still the old version.
 
-`npm run build` passes (sitemap → `tsc --noEmit` → vite build). All 18 routes
-were opened in a browser and render with no console errors.
+`npm run build` passes: sitemap → `tsc --noEmit` → `vitest run` (174 tests) →
+vite build. All 18 routes were opened in a browser and render with no console
+errors.
 
 ### Measured results
 
@@ -28,6 +29,9 @@ were opened in a browser and render with no console errors.
 | PWA precache | nothing (bundle too big to cache) | 414 KB, 9 entries |
 | Routes | 1 (everything rendered `/`) | 18, one per tool |
 | Typecheck | no tsconfig at all | strict, fails the build |
+| Tests | none | 174, run by `npm run build` |
+| DOM nodes for a 239 KB doc | 216,606 | 3,538 |
+| Main-thread block, 2.29 MB flatten | tab froze | 49 ms |
 
 ## What was done
 
@@ -49,6 +53,23 @@ The commit message on `45ae302` lists every fix. In short:
   cron parser, JSONPath, JSON Schema, reverse format converters, HTML→Markdown.
 - **Rebuilt.** Diff viewer (change navigation, F7), token counter (current
   models and prices), media player (YouTube/Vimeo), markdown reader.
+
+Second pass (`13f06d9`) fixed three reported bugs and five more found while
+testing them:
+
+- **The diff's left pane typed backwards.** `@monaco-editor/react` calls
+  `setValue()` on the original model for every prop change, which resets the
+  cursor. The editor is now seeded only by changes that did not come from it.
+- **Syntax is detected from the content** (`utils/detectLanguage.ts`) until the
+  user picks one by hand.
+- **Large documents froze the tab.** The tree view collapses and pages its
+  children; parsing, stats and flattening moved to a Web Worker
+  (`lib/jsonWorker.ts`).
+- Also: `toXML` produced two root elements for a top-level array; the preview
+  table rendered `false` and `null` as blank cells and ignored its own search
+  filter in the row count; Monaco threw on diff-viewer unmount and on
+  next-difference over a pure deletion; a dead "Auto-Flatten" toggle was
+  removed.
 
 ## Next steps
 
@@ -78,14 +99,14 @@ The commit message on `45ae302` lists every fix. In short:
 - **The JSON Schema validator is partial.** It does not resolve `$ref`,
   evaluate `if/then/else`, or assert `format`. The page says so. If it needs to
   be complete, swap in Ajv.
-- **No tests.** There are none and there never were. The MD5 implementation and
-  the cron matcher were verified against Node's `crypto` and by hand during
-  development, but nothing is pinned down in CI. A few Vitest cases around
-  `utils/` (formatUtils round trips, hashUtils, cronUtils, schemaUtils) would
-  be the highest-value thing to add next.
-- **Flattening still runs on the main thread.** `parseAndFlattenJSON` is
-  synchronous; a multi-MB file will freeze the tab for a moment. Moving it to a
-  Web Worker is the obvious follow-up.
+- **Tests cover `utils/` and `lib/`, not the React components.** 174 Vitest
+  cases run on every build, but no component is mounted in a test. The two
+  Monaco bugs fixed in `13f06d9` could only be caught in a real browser, and
+  still could. Adding `@testing-library/react` for the non-Monaco pages would
+  be the next step.
+- **Monaco's own cost is untouched.** A multi-megabyte document is responsive
+  now, but Monaco still tokenizes it on the main thread, so the editor itself
+  can hitch on a very large paste even though the app around it does not.
 - **`npm audit` still reports dev-dependency advisories.** The runtime ones
   (xlsx) are fixed; the rest are transitive build tooling.
 

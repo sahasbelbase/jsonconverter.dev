@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, Search } from 'lucide-react';
 import { CITIES, cityForZone, type City } from '../lib/cities';
-import { getAllZones, getOffsetMinutes, formatOffset } from '../utils/timezoneUtils';
+import { foldForSearch, getAllZones, getOffsetMinutes, formatOffset } from '../utils/timezoneUtils';
 
 interface ZonePickerProps {
   value: string;
@@ -54,18 +54,18 @@ const ZonePicker: React.FC<ZonePickerProps> = ({ value, onChange, label, instant
   const options = useMemo(buildOptions, []);
 
   const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = foldForSearch(query.trim());
     if (!q) return options.slice(0, 200);
     return options
       .filter(
         (option) =>
-          option.code.toLowerCase() === q ||
-          option.primary.toLowerCase().includes(q) ||
-          option.secondary.toLowerCase().includes(q) ||
-          option.zone.toLowerCase().includes(q)
+          foldForSearch(option.code) === q ||
+          foldForSearch(option.primary).includes(q) ||
+          foldForSearch(option.secondary).includes(q) ||
+          foldForSearch(option.zone).includes(q)
       )
       // An exact code match is almost certainly what was meant.
-      .sort((a, b) => Number(b.code.toLowerCase() === q) - Number(a.code.toLowerCase() === q))
+      .sort((a, b) => Number(foldForSearch(b.code) === q) - Number(foldForSearch(a.code) === q))
       .slice(0, 200);
   }, [options, query]);
 

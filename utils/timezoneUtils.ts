@@ -318,3 +318,14 @@ export const parseDateTimeLocalValue = (value: string): ZoneFields | null => {
     second: Number(match[6] ?? '0'),
   };
 };
+
+/**
+ * Lowercases and strips diacritics, so searching "malaga" finds Málaga and
+ * "sao paulo" finds São Paulo. Many of the city names carry accents that
+ * nobody types.
+ */
+export const foldForSearch = (value: string): string =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();

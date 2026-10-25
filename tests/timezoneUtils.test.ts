@@ -10,6 +10,7 @@ import {
   parseDateTimeLocalValue,
   toDateTimeLocalValue,
   canonicalZone,
+  foldForSearch,
   resolveZonedTime,
   zonedFieldsToInstant,
 } from '../utils/timezoneUtils';
@@ -265,6 +266,38 @@ describe('the city table', () => {
     expect(codes).toContain('KTM');
     expect(codes).toContain('UTC');
   });
+
+  it('covers every continent', () => {
+    const zones = CITIES.map((city) => city.zone);
+    for (const region of ['Asia/', 'Europe/', 'Africa/', 'America/', 'Australia/', 'Pacific/', 'Atlantic/', 'Indian/']) {
+      expect(zones.some((zone) => zone.startsWith(region))).toBe(true);
+    }
+  });
+
+  it('covers the offsets whole-hour implementations get wrong', () => {
+    const instant = new Date('2026-01-15T12:00:00Z');
+    const offsets = new Set(CITIES.map((city) => getOffsetMinutes(instant, city.zone)));
+    // 45-minute zones, half-hour zones, and the extremes either side of UTC.
+    expect(offsets).toContain(345); // Kathmandu +5:45
+    expect(offsets).toContain(525); // Eucla +8:45
+    expect(offsets).toContain(825); // Chatham +13:45
+    expect(offsets).toContain(840); // Kiritimati +14:00
+    expect(offsets).toContain(330); // Kolkata +5:30
+    expect(offsets).toContain(-210); // St John's -3:30
+  });
+
+  it('gives every city a name and a country', () => {
+    for (const city of CITIES) {
+      expect(city.name.trim()).not.toBe('');
+      expect(city.country.trim()).not.toBe('');
+    }
+  });
+
+  it('uses three-letter codes, where a city has one', () => {
+    for (const city of CITIES) {
+      if (city.code) expect(city.code).toMatch(/^[A-Z]{3}$/);
+    }
+  });
 });
 
 
@@ -313,5 +346,28 @@ describe('cityForZone', () => {
 
   it('returns nothing for a zone with no city', () => {
     expect(cityForZone('Antarctica/Troll')).toBeUndefined();
+  });
+});
+
+
+describe('foldForSearch', () => {
+  it('strips the accents nobody types', () => {
+    expect(foldForSearch('Málaga')).toBe('malaga');
+    expect(foldForSearch('São Paulo')).toBe('sao paulo');
+    expect(foldForSearch('Córdoba')).toBe('cordoba');
+    expect(foldForSearch('Reykjavík')).toBe('reykjavik');
+    expect(foldForSearch('Chișinău')).toBe('chisinau');
+  });
+
+  it('leaves unaccented text alone apart from case', () => {
+    expect(foldForSearch('New York')).toBe('new york');
+  });
+
+  it('makes every accented city reachable by plain ASCII', () => {
+    const accented = CITIES.filter((city) => /[^\x00-\x7F]/.test(city.name));
+    expect(accented.length).toBeGreaterThan(5);
+    for (const city of accented) {
+      expect(foldForSearch(city.name)).toMatch(/^[\x00-\x7F]*$/);
+    }
   });
 });

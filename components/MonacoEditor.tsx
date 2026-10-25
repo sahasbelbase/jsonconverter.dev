@@ -1,8 +1,6 @@
-import React, { useRef, useEffect, useState } from 'react';
-import Editor, { loader, OnMount } from '@monaco-editor/react';
-
-// Configure loader to use CDN to avoid local bundler issues
-loader.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+import React, { useEffect, useRef, useState } from 'react';
+import Editor, { type OnMount } from '@monaco-editor/react';
+import '../lib/monaco';
 
 interface MonacoEditorProps {
   value: string;
@@ -10,34 +8,61 @@ interface MonacoEditorProps {
   theme?: 'light' | 'dark';
   language?: string;
   onMount?: (editor: any, monaco: any) => void;
-  options?: any;
+  options?: Record<string, unknown>;
+  readOnly?: boolean;
 }
 
-const MonacoEditor: React.FC<MonacoEditorProps> = ({ value, onChange, theme = 'light', language = 'json', onMount, options }) => {
+/**
+ * `automaticLayout` is off on purpose: it polls on a timer and fights the
+ * flex layout. A ResizeObserver with a rAF-deferred `layout()` is both cheaper
+ * and the documented way to avoid the "ResizeObserver loop" warning.
+ */
+const MonacoEditor: React.FC<MonacoEditorProps> = ({
+  value,
+  onChange,
+  theme,
+  language = 'json',
+  onMount,
+  options,
+  readOnly = false,
+}) => {
   const [editor, setEditor] = useState<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isDark, setIsDark] = useState(
+    () => typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+  );
+
+  // Follow the app theme unless the caller pins one.
+  useEffect(() => {
+    if (theme) return;
+    const check = () => setIsDark(document.documentElement.classList.contains('dark'));
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, [theme]);
 
   useEffect(() => {
-    if (!editor || !containerRef.current) return;
+    const node = containerRef.current;
+    if (!editor || !node) return;
 
-    const observer = new ResizeObserver(() => {
-      // Wrap layout call in RAF to avoid "ResizeObserver loop limit exceeded"
-      window.requestAnimationFrame(() => {
-        editor.layout();
-      });
-    });
-
-    observer.observe(containerRef.current);
-
-    return () => {
-      observer.disconnect();
+    const applySize = () => {
+      const { width, height } = node.getBoundingClientRect();
+      if (width > 0 && height > 0) editor.layout({ width, height });
     };
+
+    const observer = new ResizeObserver(() => window.requestAnimationFrame(applySize));
+    observer.observe(node);
+    applySize();
+    return () => observer.disconnect();
   }, [editor]);
 
   const handleEditorMount: OnMount = (editorInstance, monaco) => {
     setEditor(editorInstance);
-    if (onMount) onMount(editorInstance, monaco);
+    onMount?.(editorInstance, monaco);
   };
+
+  const resolvedTheme = theme ?? (isDark ? 'dark' : 'light');
 
   return (
     <div ref={containerRef} className="h-full w-full overflow-hidden relative">
@@ -48,7 +73,7 @@ const MonacoEditor: React.FC<MonacoEditorProps> = ({ value, onChange, theme = 'l
         language={language}
         value={value}
         onChange={onChange}
-        theme={theme === 'dark' ? 'vs-dark' : 'light'}
+        theme={resolvedTheme === 'dark' ? 'vs-dark' : 'light'}
         options={{
           minimap: { enabled: false },
           scrollBeyondLastLine: false,
@@ -56,26 +81,24 @@ const MonacoEditor: React.FC<MonacoEditorProps> = ({ value, onChange, theme = 'l
           tabSize: 2,
           formatOnPaste: false,
           formatOnType: false,
-          automaticLayout: false, // Critical: Disable native auto-layout to prevent loops
+          automaticLayout: false,
           wordWrap: 'on',
           padding: { top: 16, bottom: 16 },
           lineNumbers: 'on',
           renderLineHighlight: 'all',
-          scrollbar: {
-            vertical: 'visible',
-            horizontal: 'visible'
-          },
+          readOnly,
+          scrollbar: { vertical: 'visible', horizontal: 'visible' },
           find: {
             addExtraSpaceOnTop: false,
             autoFindInSelection: 'multiline',
             seedSearchStringFromSelection: 'always',
           },
-          ...options
+          ...options,
         }}
         onMount={handleEditorMount}
         loading={
           <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-            Loading Editor...
+            Loading editor…
           </div>
         }
       />

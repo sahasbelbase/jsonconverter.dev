@@ -45,7 +45,7 @@ const PreviewTable: React.FC<PreviewTableProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-dark-secondary rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div className="flex flex-col flex-1 min-h-0 bg-white dark:bg-dark-secondary rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
       {/* Header Toolbar */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row gap-4 justify-between items-center bg-gray-50 dark:bg-gray-800">
         <div className="flex items-center gap-2 w-full sm:w-auto">

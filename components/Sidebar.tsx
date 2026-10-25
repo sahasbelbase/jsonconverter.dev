@@ -1,100 +1,56 @@
 import React from 'react';
-import { FileJson, GitCompareArrows, FileCode2, Code, Calculator, Shield, Link, CirclePlay, FileText } from 'lucide-react';
-import { ToolMode } from '../types';
+import { NavLink } from 'react-router-dom';
+import { TOOLS } from '../lib/tools';
 
-interface SidebarProps {
-  activeTool: ToolMode;
-  onSelect: (mode: ToolMode) => void;
-}
+const GROUP_LABELS: Record<string, string> = {
+  json: 'JSON',
+  text: 'Text',
+  web: 'Web',
+  generate: 'Generate',
+};
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTool, onSelect }) => {
-  const navItems = [
-    {
-      id: ToolMode.CONVERTER,
-      icon: <FileJson size={24} />,
-      label: 'Converter',
-      desc: 'Format & Export'
-    },
-    {
-      id: ToolMode.FORMAT,
-      icon: <FileCode2 size={24} />,
-      label: 'Formats',
-      desc: 'JSON to XML/YAML'
-    },
-    {
-      id: ToolMode.URL_ENCODER,
-      icon: <Link size={24} />,
-      label: 'URL Encoder',
-      desc: 'Parse & Encode'
-    },
-    {
-      id: ToolMode.JWT,
-      icon: <Shield size={24} />,
-      label: 'JWT Decoder',
-      desc: 'Debug & Verify'
-    },
-    {
-      id: ToolMode.MARKDOWN_READER,
-      icon: <FileText size={24} />,
-      label: 'MD Reader',
-      desc: 'View & Export'
-    },
-    {
-      id: ToolMode.HTML,
-      icon: <Code size={24} />,
-      label: 'HTML Viewer',
-      desc: 'Beautify & View'
-    },
-    {
-      id: ToolMode.XML,
-      icon: <FileCode2 size={24} />,
-      label: 'XML Formatter',
-      desc: 'Beautify & Minify'
-    },
-    {
-      id: ToolMode.MEDIA_PLAYER,
-      icon: <CirclePlay size={24} />,
-      label: 'Media Player',
-      desc: 'MP4 & MP3 Player'
-    },
-    {
-      id: ToolMode.DIFF,
-      icon: <GitCompareArrows size={24} />,
-      label: 'Diff',
-      desc: 'Compare Text'
-    },
-    {
-      id: ToolMode.TOKENIZER,
-      icon: <Calculator size={24} />,
-      label: 'Tokenizer',
-      desc: 'Count Tokens'
-    }
-  ];
+const Sidebar: React.FC<{ onNavigate?: () => void }> = ({ onNavigate }) => {
+  const groups = ['json', 'text', 'web', 'generate'] as const;
 
   return (
-    <div className="h-full flex z-40">
-      <nav className="h-full bg-white dark:bg-dark-secondary border-r border-gray-200 dark:border-gray-700 flex flex-col items-start py-4 gap-2 transition-all duration-300 w-16 hover:w-56 shadow-xl group overflow-y-auto scrollbar-hide">
-        
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onSelect(item.id)}
-            className={`flex items-center w-[calc(100%-12px)] px-3 py-3 mx-1.5 rounded-lg transition-all duration-200 shrink-0 ${
-              activeTool === item.id
-                ? 'bg-blue-50 dark:bg-blue-900/30 text-primary'
-                : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200'
-            }`}
-            title={item.label}
-          >
-            <span className="shrink-0">{item.icon}</span>
-            <div className="ml-3 flex flex-col items-start whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                <span className="text-sm font-medium">{item.label}</span>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500">{item.desc}</span>
-            </div>
-          </button>
-        ))}
-      </nav>
-    </div>
+    <nav
+      aria-label="Tools"
+      className="h-full w-16 hover:w-60 focus-within:w-60 group bg-white dark:bg-dark-secondary border-r border-gray-200 dark:border-gray-700 flex flex-col py-3 gap-0.5 transition-[width] duration-200 shadow-xl overflow-y-auto overflow-x-hidden scrollbar-hide"
+    >
+      {groups.map((group) => (
+        <div key={group} className="contents">
+          <div className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-600 whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+            {GROUP_LABELS[group]}
+          </div>
+          {TOOLS.filter((tool) => tool.group === group).map((tool) => {
+            const Icon = tool.icon;
+            return (
+              <NavLink
+                key={tool.id}
+                to={tool.path}
+                onClick={onNavigate}
+                title={tool.label}
+                className={({ isActive }) =>
+                  `flex items-center w-[calc(100%-12px)] px-3 py-2.5 mx-1.5 rounded-lg transition-colors shrink-0 ${
+                    isActive
+                      ? 'bg-blue-50 dark:bg-blue-900/30 text-primary'
+                      : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200'
+                  }`
+                }
+              >
+                <span className="shrink-0">
+                  <Icon size={22} />
+                </span>
+                <span className="ml-3 flex flex-col items-start whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+                  <span className="text-sm font-medium leading-tight">{tool.label}</span>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500">{tool.desc}</span>
+                </span>
+              </NavLink>
+            );
+          })}
+        </div>
+      ))}
+    </nav>
   );
 };
 

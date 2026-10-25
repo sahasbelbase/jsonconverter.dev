@@ -2,17 +2,26 @@
   "headers": [
     {
       "source": "/sitemap.xml",
+      "headers": [{ "key": "Content-Type", "value": "application/xml" }]
+    },
+    {
+      "source": "/assets/(.*)",
       "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/xml"
-        }
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" }
       ]
     }
   ],
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!assets/|sitemap.xml|robots.txt|ads.txt|icon.svg|sw.js|manifest.webmanifest).*)",
       "destination": "/index.html"
     }
   ]

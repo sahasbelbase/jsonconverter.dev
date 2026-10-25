@@ -10,7 +10,6 @@ import JsonTreeView from './JsonTreeView';
 import MonacoEditor from './MonacoEditor';
 import { JsonStats } from '../types';
 import { getJsonStats, fixJson, unescapeString, getErrorLocation, analyzeJsonError } from '../utils/jsonUtils';
-import { checkBotAndRateLimit } from '../utils/botUtils';
 
 interface InputAreaProps {
   value: string;
@@ -47,32 +46,6 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
   const [isTreeExpanded, setIsTreeExpanded] = useState(true);
   const [treeCopySuccess, setTreeCopySuccess] = useState(false);
 
-  // Custom styles for Monaco Editor error highlighting
-  useEffect(() => {
-    const styleId = 'monaco-error-styles';
-    if (!document.getElementById(styleId)) {
-      const style = document.createElement('style');
-      style.id = styleId;
-      style.innerHTML = `
-        .monaco-error-highlighter {
-          background-color: #ffe2e2 !important;
-          border-bottom: 1px solid #f87171 !important;
-        }
-        .dark .monaco-error-highlighter {
-          background-color: rgba(153, 27, 27, 0.4) !important;
-          border-bottom: 1px solid #ef4444 !important;
-        }
-        .monaco-error-line {
-          background-color: #ffe2e2 !important;
-        }
-        .dark .monaco-error-line {
-          background-color: rgba(127, 29, 29, 0.1) !important;
-        }
-      `;
-      document.head.appendChild(style);
-    }
-  }, []);
-
   const handleToggleExpand = useCallback(() => {
     if (isTreeExpanded) {
       setCollapseAllSignal(s => s + 1);
@@ -89,10 +62,6 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
   const [errorLoc, setErrorLoc] = useState<ErrorLoc | null>(null);
   const [stats, setStats] = useState<JsonStats | null>(null);
   const [parsedJson, setParsedJson] = useState<any>(null);
-
-  // Bot Protection State
-  const [honeypot, setHoneypot] = useState('');
-  const mountTime = useRef(Date.now());
 
   // Monaco Ref
   const editorRef = useRef<any>(null);
@@ -114,18 +83,8 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
   // --- Actions Wrapped in useCallback for Effect dependencies ---
 
   const handleProcessClick = useCallback(() => {
-    // Basic bot protection check
-    const status = checkBotAndRateLimit(honeypot, mountTime.current, 'convert');
-
-    if (status.blocked) {
-      if (status.reason === 'rate_limit') {
-        alert("You are making requests too quickly. Please wait a moment.");
-      }
-      return;
-    }
-
     onProcess();
-  }, [honeypot, onProcess]);
+  }, [onProcess]);
 
   const copyToClipboard = useCallback(async () => {
     try {
@@ -370,7 +329,7 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
 
   const handleFile = (file: File) => {
     if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
-      alert("Please upload a valid JSON file.");
+      setLocalError(`"${file.name}" is not a .json file.`);
       return;
     }
     const reader = new FileReader();
@@ -438,19 +397,7 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
   };
 
   return (
-    <div className="flex flex-col h-full space-y-4">
-      {/* Bot Protection: Invisible Honeypot Field */}
-      <input
-        type="text"
-        name="website_hp_field"
-        value={honeypot}
-        onChange={(e) => setHoneypot(e.target.value)}
-        style={{ opacity: 0, position: 'absolute', top: 0, left: 0, height: 0, width: 0, zIndex: -1, pointerEvents: 'none' }}
-        tabIndex={-1}
-        autoComplete="off"
-        aria-hidden="true"
-      />
-
+    <div className="flex flex-col flex-1 min-h-0 space-y-4">
       {/* Top Toolbar */}
       <div className="flex-none flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-dark-secondary p-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
         <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto max-w-full">

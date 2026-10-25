@@ -3,13 +3,14 @@ import {
   Upload, FileJson, Check, AlertCircle,
   Code, Network, Wand2, Braces, Minimize2, ArrowRightLeft,
   FileCode2, Trash2, ShieldAlert, Copy, Columns, Search, X,
-  Zap, ClipboardPaste, Quote, FileText, ChevronsUpDown, ChevronsDownUp
+  ClipboardPaste, Quote, FileText, ChevronsUpDown, ChevronsDownUp
 } from 'lucide-react';
 import Button from './Button';
 import JsonTreeView from './JsonTreeView';
 import MonacoEditor from './MonacoEditor';
 import { JsonStats } from '../types';
-import { getJsonStats, fixJson, unescapeString, getErrorLocation, analyzeJsonError } from '../utils/jsonUtils';
+import { fixJson, unescapeString, getErrorLocation, analyzeJsonError } from '../utils/jsonUtils';
+import { useJsonWorker } from '../lib/useJsonWorker';
 
 interface InputAreaProps {
   value: string;
@@ -30,7 +31,6 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
   const [mode, setMode] = useState<TabMode>('code');
   const [isSplitView, setIsSplitView] = useState(() => typeof window !== 'undefined' && window.innerWidth > 1024);
   const [activePane, setActivePane] = useState<'editor' | 'tree'>('editor');
-  const [autoFlatten, setAutoFlatten] = useState(false);
 
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -61,6 +61,7 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
   const [errorSuggestion, setErrorSuggestion] = useState<string | null>(null);
   const [errorLoc, setErrorLoc] = useState<ErrorLoc | null>(null);
   const [stats, setStats] = useState<JsonStats | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
   const [parsedJson, setParsedJson] = useState<any>(null);
 
   // Monaco Ref
@@ -216,7 +217,14 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [mode, isSplitView, showTreeSearch, value, handleProcessClick, activePane, activeError, copyToClipboard, clearInput]);
 
-  // Live Validation & Stats
+  // Live validation & stats, off the main thread.
+  //
+  // JSON.parse plus a full stats walk on every keystroke used to block
+  // rendering — a 100 KB paste froze the tab for about two seconds. The worker
+  // does both, and a reply is ignored if the text has moved on since.
+  const runJson = useJsonWorker();
+  const validationSeq = useRef(0);
+
   useEffect(() => {
     setLocalError(null);
     setErrorSuggestion(null);
@@ -225,40 +233,38 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
     if (!value.trim()) {
       setStats(null);
       setParsedJson(null);
+      setIsValidating(false);
       return;
     }
 
-    const timer = setTimeout(() => {
-      try {
-        const parsed = JSON.parse(value);
-        setParsedJson(parsed);
-        const newStats = getJsonStats(parsed);
-        setStats(newStats);
+    // A longer debounce for a big document: there is no point validating on
+    // every keystroke of a file the user is still pasting into.
+    const delay = value.length > 200_000 ? 600 : 300;
+    const seq = ++validationSeq.current;
+    setIsValidating(true);
 
-        if (autoFlatten) {
-          // We can't call handleProcessClick here easily without loop or structure change.
-          // But autoFlatten usually implies just re-rendering stats or parsed data for table?
-          // The Process button actually triggers the VIEW change.
-          // For autoFlatten feature within input area, we might just want to check validity.
-        }
-      } catch (e: any) {
-        setLocalError(e.message);
-        setErrorSuggestion(analyzeJsonError(e, value));
-        setStats(null);
-        setParsedJson(null);
+    const timer = setTimeout(async () => {
+      const response = await runJson('validate', value);
+      if (seq !== validationSeq.current) return; // superseded
+      setIsValidating(false);
 
-        const match = e.message.match(/position (\d+)/);
-        if (match && match[1]) {
-          const pos = parseInt(match[1], 10);
-          setErrorLoc(getErrorLocation(value, pos));
-        } else {
-          setErrorLoc(null);
-        }
+      if (response.ok && response.kind === 'validate') {
+        setParsedJson(response.parsed);
+        setStats(response.stats);
+        return;
       }
-    }, 300);
+
+      if (response.ok) return;
+
+      setParsedJson(null);
+      setStats(null);
+      setLocalError(response.message);
+      setErrorSuggestion(analyzeJsonError(new Error(response.message), value));
+      setErrorLoc(response.position !== null ? getErrorLocation(value, response.position) : null);
+    }, delay);
 
     return () => clearTimeout(timer);
-  }, [value, onProcess]); // Removed autoFlatten from deps to avoid loop logic issues for now
+  }, [value, runJson]);
 
   // Auto-scroll and Highlight error location
   useEffect(() => {
@@ -444,17 +450,6 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
 
         {(mode === 'code' || isSplitView) && (
           <div className="flex flex-wrap gap-1 items-center">
-            <button
-              onClick={() => setAutoFlatten(!autoFlatten)}
-              className={`p-2 rounded transition-colors mr-1 border ${autoFlatten
-                ? 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700'
-                : 'text-gray-400 border-transparent hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-              title={`Auto-Flatten is ${autoFlatten ? 'ON' : 'OFF'}`}
-            >
-              <Zap size={16} className={autoFlatten ? 'fill-current' : ''} />
-            </button>
-
             <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1 self-center" />
 
             <button onClick={handlePaste} title="Paste from Clipboard" className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors sm:hidden">
@@ -557,11 +552,31 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
               : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400'
               }`}>
               <div className="flex items-center gap-3 overflow-hidden w-full">
-                {activeError ? <ShieldAlert size={16} className="shrink-0 text-red-600 dark:text-red-400" /> : <Check size={14} className="text-green-500 shrink-0" />}
+                {activeError ? (
+                  <ShieldAlert size={16} className="shrink-0 text-red-600 dark:text-red-400" />
+                ) : isValidating ? (
+                  <span className="shrink-0 w-3.5 h-3.5 rounded-full border-2 border-gray-300 border-t-primary animate-spin" />
+                ) : (
+                  <Check size={14} className="text-green-500 shrink-0" />
+                )}
 
                 <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 truncate w-full">
-                  <span className={`font-mono font-bold ${activeError ? 'text-red-700 dark:text-red-300' : 'text-green-600 dark:text-green-400'}`}>
-                    {activeError ? 'Invalid JSON' : (value.trim() ? 'Valid JSON' : 'Empty')}
+                  <span
+                    className={`font-mono font-bold ${
+                      activeError
+                        ? 'text-red-700 dark:text-red-300'
+                        : isValidating
+                          ? 'text-gray-500'
+                          : 'text-green-600 dark:text-green-400'
+                    }`}
+                  >
+                    {activeError
+                      ? 'Invalid JSON'
+                      : isValidating
+                        ? 'Checking…'
+                        : value.trim()
+                          ? 'Valid JSON'
+                          : 'Empty'}
                   </span>
 
                   {activeError && (

@@ -51,7 +51,14 @@ export const toXML = (data: unknown, rootName = 'root'): string => {
     return value === null ? '' : value;
   };
 
-  const body = builder.build({ [rootName]: sanitizeKeys(data) });
+  // A top-level array has to be wrapped twice: fast-xml-parser turns an array
+  // value into one element per item, which would give the document several
+  // root nodes and make it unparseable.
+  const payload = Array.isArray(data)
+    ? { [rootName]: { item: sanitizeKeys(data) } }
+    : { [rootName]: sanitizeKeys(data) };
+
+  const body = builder.build(payload);
   return `<?xml version="1.0" encoding="UTF-8"?>\n${body}`.trimEnd();
 };
 

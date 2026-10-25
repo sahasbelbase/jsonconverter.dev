@@ -9,6 +9,7 @@ import {
   Rows2,
   Trash2,
 } from 'lucide-react';
+import { detectDiffLanguage } from '../utils/detectLanguage';
 import '../lib/monaco';
 
 interface DiffViewerProps {
@@ -56,9 +57,44 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
 }) => {
   const editorRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const modelsRef = useRef<{ original: any; modified: any } | null>(null);
   const [instance, setInstance] = useState<any>(null);
 
+  // On unmount @monaco-editor/react disposes both text models while the diff
+  // widget is still pointing at them, which throws "TextModel got disposed
+  // before DiffEditorWidget model got reset" into the console. Keeping the
+  // models (below) stops the library disposing them; we detach and dispose
+  // them here instead, in the order Monaco expects.
+  useEffect(
+    () => () => {
+      const models = modelsRef.current;
+      try {
+        editorRef.current?.setModel(null);
+      } catch {
+        /* the widget may already be gone */
+      }
+      models?.original?.dispose();
+      models?.modified?.dispose();
+      modelsRef.current = null;
+    },
+    []
+  );
+
+  // What we hand to <DiffEditor>. It is deliberately NOT the live `original` /
+  // `modified` props.
+  //
+  // @monaco-editor/react updates the modified side with a guarded executeEdits,
+  // but the original side with an unconditional `model.setValue()` on every
+  // prop change. setValue moves the cursor back to line 1 column 1, so feeding
+  // our own keystrokes back in made the left pane type backwards. These only
+  // change when something other than the editor changes the text.
+  const [seedOriginal, setSeedOriginal] = useState(original);
+  const [seedModified, setSeedModified] = useState(modified);
+  const fromEditor = useRef({ original, modified });
+
   const [language, setLanguage] = useState('plaintext');
+  // Once the user picks a syntax by hand, stop overriding it on paste.
+  const [languageLocked, setLanguageLocked] = useState(false);
   const [inline, setInline] = useState(false);
   const [ignoreWhitespace, setIgnoreWhitespace] = useState(false);
   const [changeCount, setChangeCount] = useState(0);
@@ -84,6 +120,23 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
   }, [instance]);
 
   // Keep the change count in step with what the diff worker produces.
+  // An external change (swap, clear, format both, a value restored from
+  // storage) re-seeds the editor; a change we just received from the editor
+  // does not.
+  useEffect(() => {
+    if (original !== fromEditor.current.original) {
+      fromEditor.current.original = original;
+      setSeedOriginal(original);
+    }
+  }, [original]);
+
+  useEffect(() => {
+    if (modified !== fromEditor.current.modified) {
+      fromEditor.current.modified = modified;
+      setSeedModified(modified);
+    }
+  }, [modified]);
+
   useEffect(() => {
     if (!instance) return;
     const update = () => {
@@ -109,14 +162,20 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
             : (current - 1 + changes.length) % changes.length;
 
         const change = changes[next];
-        const line =
+        const target = editor.getModifiedEditor();
+        const lineCount = target.getModel()?.getLineCount() ?? 1;
+
+        // A pure deletion reports modifiedStartLineNumber 0, and reveal or
+        // setPosition on line 0 throws "Illegal value for lineNumber" out of
+        // the gutter renderer, so clamp into the model's real range.
+        const raw =
           change.modifiedStartLineNumber > 0
             ? change.modifiedStartLineNumber
             : change.originalStartLineNumber;
+        const line = Math.min(Math.max(raw, 1), lineCount);
 
-        const target = editor.getModifiedEditor();
         target.revealLineInCenter(line);
-        target.setPosition({ lineNumber: Math.max(1, line), column: 1 });
+        target.setPosition({ lineNumber: line, column: 1 });
         target.focus();
         return next;
       });
@@ -134,6 +193,16 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [goTo]);
+
+  // Pick the syntax from the content itself once there is something to go on,
+  // so a pasted document is highlighted without a trip to the dropdown.
+  useEffect(() => {
+    if (languageLocked) return;
+    const sample = original.trim() || modified.trim();
+    if (sample.length < 8) return;
+    const detected = detectDiffLanguage(sample);
+    if (detected && detected !== language) setLanguage(detected);
+  }, [original, modified, languageLocked, language]);
 
   const swapSides = () => {
     onOriginalChange(modified);
@@ -182,7 +251,10 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
 
         <select
           value={language}
-          onChange={(e) => setLanguage(e.target.value)}
+          onChange={(e) => {
+            setLanguage(e.target.value);
+            setLanguageLocked(true);
+          }}
           aria-label="Syntax"
           className="px-2 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-dark outline-none focus:ring-2 focus:ring-primary"
         >
@@ -276,19 +348,26 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
         <DiffEditor
           height="100%"
           language={language}
-          original={original}
-          modified={modified}
+          original={seedOriginal}
+          modified={seedModified}
+          keepCurrentOriginalModel
+          keepCurrentModifiedModel
           onMount={(editor) => {
             editorRef.current = editor;
+            modelsRef.current = editor.getModel();
             setInstance(editor);
 
             // The diff editor exposes two plain editors; wire both back to state
             // so either side can be edited in place.
             editor.getOriginalEditor().onDidChangeModelContent(() => {
-              onOriginalChange(editor.getOriginalEditor().getValue());
+              const value = editor.getOriginalEditor().getValue();
+              fromEditor.current.original = value;
+              onOriginalChange(value);
             });
             editor.getModifiedEditor().onDidChangeModelContent(() => {
-              onModifiedChange(editor.getModifiedEditor().getValue());
+              const value = editor.getModifiedEditor().getValue();
+              fromEditor.current.modified = value;
+              onModifiedChange(value);
             });
           }}
           options={{

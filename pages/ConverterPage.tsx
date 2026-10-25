@@ -2,8 +2,8 @@ import React, { useCallback, useState } from 'react';
 import InputArea from '../components/InputArea';
 import PreviewTable from '../components/PreviewTable';
 import ToolShell from '../components/ToolShell';
-import { parseAndFlattenJSON } from '../utils/jsonUtils';
 import { exportToCSV, exportToExcel } from '../utils/exportUtils';
+import { useJsonWorker } from '../lib/useJsonWorker';
 import { useLocalStorageState } from '../lib/useLocalStorageState';
 import { useToast } from '../lib/toast';
 import { TOOL_BY_PATH } from '../lib/tools';
@@ -18,27 +18,29 @@ const ConverterPage: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
+  const runJson = useJsonWorker();
 
-  const processData = useCallback(() => {
+  // Flattening a multi-megabyte document is a full walk plus a column union.
+  // It runs in a worker so the button stays responsive and the spinner spins.
+  const processData = useCallback(async () => {
     setIsProcessing(true);
     setError(null);
 
-    // Yield a frame so the spinner paints before the (synchronous) flatten.
-    requestAnimationFrame(() => {
-      try {
-        const data = parseAndFlattenJSON(jsonInput);
-        setParsedData(data);
-        setViewMode(ViewMode.PREVIEW);
-        toast.success(
-          `Flattened ${data.originalSize.toLocaleString()} record${data.originalSize === 1 ? '' : 's'} into ${data.headers.length} column${data.headers.length === 1 ? '' : 's'}.`
-        );
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-      } finally {
-        setIsProcessing(false);
-      }
-    });
-  }, [jsonInput, toast]);
+    const response = await runJson('flatten', jsonInput);
+
+    if (response.ok && response.kind === 'flatten') {
+      const { data } = response;
+      setParsedData(data);
+      setViewMode(ViewMode.PREVIEW);
+      toast.success(
+        `Flattened ${data.originalSize.toLocaleString()} record${data.originalSize === 1 ? '' : 's'} into ${data.headers.length} column${data.headers.length === 1 ? '' : 's'}.`
+      );
+    } else if (!response.ok) {
+      setError(response.message);
+    }
+
+    setIsProcessing(false);
+  }, [jsonInput, runJson, toast]);
 
   const handleExport = (kind: 'csv' | 'xlsx') => {
     if (!parsedData) return;

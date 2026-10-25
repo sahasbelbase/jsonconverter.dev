@@ -23,6 +23,7 @@ const Base64Page = lazy(() => import('./pages/Base64Page'));
 const HashPage = lazy(() => import('./pages/HashPage'));
 const JwtPage = lazy(() => import('./pages/JwtPage'));
 const TimestampPage = lazy(() => import('./pages/TimestampPage'));
+const TimezonePage = lazy(() => import('./pages/TimezonePage'));
 const UuidPage = lazy(() => import('./pages/UuidPage'));
 const RegexPage = lazy(() => import('./pages/RegexPage'));
 const CronPage = lazy(() => import('./pages/CronPage'));
@@ -47,6 +48,7 @@ const App: React.FC = () => (
           <Route path="hash-generator" element={<HashPage />} />
           <Route path="jwt-decoder" element={<JwtPage />} />
           <Route path="timestamp-converter" element={<TimestampPage />} />
+          <Route path="timezone-converter" element={<TimezonePage />} />
           <Route path="uuid-generator" element={<UuidPage />} />
           <Route path="regex-tester" element={<RegexPage />} />
           <Route path="cron-parser" element={<CronPage />} />

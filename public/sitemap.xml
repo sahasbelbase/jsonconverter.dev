@@ -67,6 +67,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://jsonconverter-dev.vercel.app/timezone-converter</loc>
+    <lastmod>2026-10-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://jsonconverter-dev.vercel.app/uuid-generator</loc>
     <lastmod>2026-10-25</lastmod>
     <changefreq>monthly</changefreq>

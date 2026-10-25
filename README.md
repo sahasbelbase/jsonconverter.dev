@@ -23,6 +23,7 @@ Each tool has its own URL, so every one of them is linkable and shareable.
 | Hash Generator | `/hash-generator` | MD5, SHA-1, SHA-256, SHA-384, SHA-512 for text or files |
 | JWT Decoder | `/jwt-decoder` | Decode, verify (HS256/RS256/ES256) and review claims |
 | Timestamp | `/timestamp-converter` | Epoch ⇄ ISO 8601 ⇄ local time |
+| Time Zones | `/timezone-converter` | Convert between cities by name or airport code, plus a world clock |
 | UUID | `/uuid-generator` | UUID v4, v7 and ULID in bulk, plus a UUID inspector |
 | Regex Tester | `/regex-tester` | Live match highlighting, capture groups, replacement preview |
 | Cron Parser | `/cron-parser` | Plain-English explanation and the next run times |

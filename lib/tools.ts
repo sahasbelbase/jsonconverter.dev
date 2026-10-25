@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   FileJson, GitCompareArrows, FileCode2, Code, Calculator, Shield, Link2,
   CirclePlay, FileText, Binary, Hash, Clock, Fingerprint, Regex, CalendarClock,
-  FileSearch, Shuffle,
+  FileSearch, Shuffle, Globe2,
 } from 'lucide-react';
 
 /**
@@ -175,6 +175,20 @@ export const TOOLS: ToolMeta[] = [
     description:
       'Convert between Unix epoch seconds or milliseconds, ISO 8601, UTC and your local time zone, with a live clock.',
     keywords: 'unix timestamp converter, epoch converter, ISO 8601, epoch to date, timestamp to date',
+    group: 'generate',
+  },
+  {
+    id: 'timezone',
+    path: '/timezone-converter',
+    label: 'Time Zones',
+    desc: 'Convert & world clock',
+    icon: Globe2,
+    heading: 'Time Zone Converter',
+    title: 'Time Zone Converter and World Clock',
+    description:
+      'Convert a time between any two cities or time zones by name or airport code, and see the current time around the world. Daylight saving handled for the date you pick.',
+    keywords:
+      'time zone converter, world clock, KTM to UTC, timezone calculator, current time in, UTC offset, meeting planner',
     group: 'generate',
   },
   {

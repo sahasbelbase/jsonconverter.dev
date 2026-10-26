@@ -46,9 +46,20 @@ const MonacoEditor: React.FC<MonacoEditorProps> = ({
     const node = containerRef.current;
     if (!editor || !node) return;
 
+    // Only re-layout when the box actually changed size. Laying out on every
+    // observer tick can feed a growth loop when an unrelated element on the page
+    // keeps nudging the layout; comparing against the last applied size breaks it.
+    let lastW = 0;
+    let lastH = 0;
     const applySize = () => {
       const { width, height } = node.getBoundingClientRect();
-      if (width > 0 && height > 0) editor.layout({ width, height });
+      const w = Math.round(width);
+      const h = Math.round(height);
+      if (w > 0 && h > 0 && (w !== lastW || h !== lastH)) {
+        lastW = w;
+        lastH = h;
+        editor.layout({ width: w, height: h });
+      }
     };
 
     const observer = new ResizeObserver(() => window.requestAnimationFrame(applySize));

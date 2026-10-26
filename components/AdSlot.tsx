@@ -29,10 +29,17 @@ const SLOT_IDS: Record<AdSlotProps['position'], string | undefined> = {
   sidebar: import.meta.env.VITE_ADSENSE_SLOT_SIDEBAR,
 };
 
+/**
+ * The ad lives in a box of this exact size, with overflow clipped. A responsive
+ * AdSense unit sizes itself from its container's width and will keep growing a
+ * flex sibling it is allowed to push; inside the fixed, overflow-hidden box
+ * below it cannot, so it can never blow up the surrounding layout. (A full-width
+ * responsive bottom banner did exactly that in production.)
+ */
 const SIZES: Record<AdSlotProps['position'], string> = {
-  top: 'w-full max-w-[728px] h-[50px] md:h-[90px] mx-auto',
+  top: 'w-full max-w-[728px] h-[50px] md:h-[90px]',
   sidebar: 'w-[300px] h-[250px]',
-  bottom: 'w-full max-w-[728px] h-[90px] mx-auto',
+  bottom: 'w-full max-w-[728px] h-[90px]',
 };
 
 const AdSlot: React.FC<AdSlotProps> = ({ position, className = '' }) => {
@@ -68,15 +75,19 @@ const AdSlot: React.FC<AdSlotProps> = ({ position, className = '' }) => {
 
   return (
     <div className={`flex-none flex justify-center my-2 ${className}`}>
-      <ins
-        ref={insRef}
-        className={`adsbygoogle block ${SIZES[position]}`}
-        style={{ display: 'block' }}
-        data-ad-client={AD_CLIENT}
-        data-ad-slot={slotId}
-        data-ad-format="auto"
-        data-full-width-responsive="true"
-      />
+      {/* Fixed, clipped box: the ad cannot resize it, so it cannot push the
+          page. data-full-width-responsive is off for the same reason. */}
+      <div className={`relative overflow-hidden ${SIZES[position]} mx-auto`}>
+        <ins
+          ref={insRef}
+          className="adsbygoogle block w-full h-full"
+          style={{ display: 'block', width: '100%', height: '100%' }}
+          data-ad-client={AD_CLIENT}
+          data-ad-slot={slotId}
+          data-ad-format={position === 'sidebar' ? 'rectangle' : 'horizontal'}
+          data-full-width-responsive="false"
+        />
+      </div>
     </div>
   );
 };

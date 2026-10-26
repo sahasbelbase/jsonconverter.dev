@@ -41,19 +41,19 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
   const treeSearchInputRef = useRef<HTMLInputElement>(null);
 
   // Tree View State
-  const [expandAllSignal, setExpandAllSignal] = useState(0);
-  const [collapseAllSignal, setCollapseAllSignal] = useState(0);
+  const [expansion, setExpansion] = useState<{ mode: 'expand' | 'collapse'; version: number }>({
+    mode: 'expand',
+    version: 0,
+  });
   const [isTreeExpanded, setIsTreeExpanded] = useState(true);
   const [treeCopySuccess, setTreeCopySuccess] = useState(false);
 
   const handleToggleExpand = useCallback(() => {
-    if (isTreeExpanded) {
-      setCollapseAllSignal(s => s + 1);
-      setIsTreeExpanded(false);
-    } else {
-      setExpandAllSignal(s => s + 1);
-      setIsTreeExpanded(true);
-    }
+    setExpansion((prev) => ({
+      mode: isTreeExpanded ? 'collapse' : 'expand',
+      version: prev.version + 1,
+    }));
+    setIsTreeExpanded((v) => !v);
   }, [isTreeExpanded]);
 
   const [copySuccess, setCopySuccess] = useState(false);
@@ -670,8 +670,7 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
                 <JsonTreeView
                   data={parsedJson}
                   searchTerm={treeSearchTerm}
-                  expandAllSignal={expandAllSignal}
-                  collapseAllSignal={collapseAllSignal}
+                  expansion={expansion}
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-gray-400">

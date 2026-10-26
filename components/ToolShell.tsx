@@ -14,17 +14,21 @@ interface ToolShellProps {
  * description always match the route the visitor is actually on.
  */
 const ToolShell: React.FC<ToolShellProps> = ({ tool, children, article }) => (
-  <div className="flex-1 flex flex-col">
+  <>
     <SeoHead title={tool.title} description={tool.description} path={tool.path} />
-    {/* A definite minimum height: the tool fills the viewport on a tall screen,
-        but never collapses behind the article below it on a short one. */}
-    <div className="flex-1 flex flex-col min-h-[34rem]">{children}</div>
+    {/* The tool fills one screenful of the scrolling card (`h-full`) and no more,
+        so its own scrollable panes — the editor and the JSON tree — scroll
+        inside themselves instead of stretching the whole card to the height of
+        their content. `shrink-0` keeps that height when an article sits below,
+        and `min-h-[34rem]` stops it collapsing on a short viewport. The article
+        is a sibling, reached by scrolling the card past the tool. */}
+    <div className="shrink-0 h-full min-h-[34rem] flex flex-col">{children}</div>
     {article && (
-      <article className="mt-8 prose prose-sm dark:prose-invert max-w-none px-4 pb-8 border-t border-gray-200 dark:border-gray-800 pt-8">
+      <article className="shrink-0 mt-8 prose prose-sm dark:prose-invert max-w-none px-4 pb-8 border-t border-gray-200 dark:border-gray-800 pt-8">
         {article}
       </article>
     )}
-  </div>
+  </>
 );
 
 export default ToolShell;

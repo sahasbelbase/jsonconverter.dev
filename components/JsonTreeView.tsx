@@ -8,11 +8,26 @@ import {
   startsExpanded,
 } from '../utils/treeUtils';
 
+/**
+ * A single expand/collapse command, not two independent signals.
+ *
+ * Expand All works by revealing collapsed branches, which mounts their child
+ * nodes for the first time. Those children have to agree with the command that
+ * is already in effect, so both the initial state and the effect read the same
+ * `mode`. With two separate counters a freshly mounted node ran both effects and
+ * the stale one won, which is why Expand All used to leave deep branches shut
+ * after a Collapse All.
+ */
+interface ExpansionCommand {
+  mode: 'expand' | 'collapse';
+  /** Bumped on every click; `0` means no command has been issued yet. */
+  version: number;
+}
+
 interface JsonTreeViewProps {
   data: any;
   searchTerm?: string;
-  expandAllSignal?: number;
-  collapseAllSignal?: number;
+  expansion?: ExpansionCommand;
 }
 
 interface TreeConfig {
@@ -21,8 +36,7 @@ interface TreeConfig {
   isLarge: boolean;
   searchTerm: string;
   currentMatchPath: string | null;
-  expandAllSignal: number;
-  collapseAllSignal: number;
+  expansion: ExpansionCommand;
 }
 
 const TreeContext = createContext<TreeConfig>({
@@ -30,8 +44,7 @@ const TreeContext = createContext<TreeConfig>({
   isLarge: false,
   searchTerm: '',
   currentMatchPath: null,
-  expandAllSignal: 0,
-  collapseAllSignal: 0,
+  expansion: { mode: 'expand', version: 0 },
 });
 
 const getType = (value: any) => {
@@ -74,7 +87,7 @@ interface JsonNodeProps {
 }
 
 const JsonNode: React.FC<JsonNodeProps> = ({ data, name, isLast = true, path, depth }) => {
-  const { matchedPaths, isLarge, searchTerm, currentMatchPath, expandAllSignal, collapseAllSignal } =
+  const { matchedPaths, isLarge, searchTerm, currentMatchPath, expansion } =
     useContext(TreeContext);
 
   const type = getType(data);
@@ -82,19 +95,23 @@ const JsonNode: React.FC<JsonNodeProps> = ({ data, name, isLast = true, path, de
   const keys = isObject ? Object.keys(data) : [];
   const isEmpty = isObject && keys.length === 0;
 
-  // A large document opens with only its first level showing; a small one opens
-  // a couple of levels deep, which is what you usually want to see.
-  const [isExpanded, setIsExpanded] = useState(() => startsExpanded(depth, isLarge));
+  // A node mounted while an Expand/Collapse All command is in effect must honour
+  // it immediately, otherwise a branch revealed by Expand All would open with
+  // its own default and hide everything below it. When no command has been
+  // issued, fall back to the depth-based default: a large document opens with
+  // only its first level, a small one opens a couple of levels deep.
+  const [isExpanded, setIsExpanded] = useState(() =>
+    expansion.version > 0
+      ? expansion.mode === 'expand' || depth === 0
+      : startsExpanded(depth, isLarge)
+  );
   const [visibleCount, setVisibleCount] = useState(CHILDREN_PAGE);
   const nodeRef = useRef<HTMLDivElement>(null);
 
+  // React to a new command on nodes that were already mounted when it arrived.
   useEffect(() => {
-    if (expandAllSignal > 0) setIsExpanded(true);
-  }, [expandAllSignal]);
-
-  useEffect(() => {
-    if (collapseAllSignal > 0) setIsExpanded(depth === 0);
-  }, [collapseAllSignal, depth]);
+    if (expansion.version > 0) setIsExpanded(expansion.mode === 'expand' || depth === 0);
+  }, [expansion.version, expansion.mode, depth]);
 
   const isCurrentKeyMatch = currentMatchPath === `${path}#key`;
   const isCurrentValueMatch = currentMatchPath === `${path}#value`;
@@ -247,8 +264,7 @@ const JsonNode: React.FC<JsonNodeProps> = ({ data, name, isLast = true, path, de
 export default function JsonTreeView({
   data,
   searchTerm = '',
-  expandAllSignal = 0,
-  collapseAllSignal = 0,
+  expansion = { mode: 'expand', version: 0 },
 }: JsonTreeViewProps) {
   const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
 
@@ -264,10 +280,9 @@ export default function JsonTreeView({
       isLarge,
       searchTerm,
       currentMatchPath: hits[currentMatchIdx] ?? null,
-      expandAllSignal,
-      collapseAllSignal,
+      expansion,
     }),
-    [searchTerm, onPath, isLarge, hits, currentMatchIdx, expandAllSignal, collapseAllSignal]
+    [searchTerm, onPath, isLarge, hits, currentMatchIdx, expansion]
   );
 
   return (

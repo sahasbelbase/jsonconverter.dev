@@ -171,31 +171,32 @@ const HtmlViewer: React.FC<HtmlViewerProps> = ({ value, onChange, onError }) => 
         {/* Editor Pane */}
         {(activePane === 'editor' || isSplitView) && (
             <div className={`flex flex-col relative h-full overflow-hidden ${isSplitView ? 'w-1/2 border-r border-gray-200 dark:border-gray-700' : 'w-full'}`}>
-                <MonacoEditor 
+                <MonacoEditor
                   value={value}
                   onChange={(val) => onChange(val || '')}
-                  theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
+                  language="html"
                   onMount={handleEditorMount}
-                  // Override language to html
                 />
             </div>
         )}
 
         {/* Preview Pane */}
         {(activePane === 'preview' || isSplitView) && (
-            <div className={`flex flex-col relative h-full bg-white ${isSplitView ? 'w-1/2' : 'w-full'}`}>
+            <div className={`flex flex-col relative h-full bg-white dark:bg-dark-secondary ${isSplitView ? 'w-1/2' : 'w-full'}`}>
                <div className="flex-none px-3 py-1 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                   <span className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
                      <MonitorPlay size={12}/> Browser Preview
                   </span>
                </div>
-               <div className="flex-1 bg-white relative">
+               {/* A rendered page keeps a white canvas, the way a browser shows it;
+                   the empty state follows the app theme instead of a bare white slab. */}
+               <div className={`flex-1 relative ${value ? 'bg-white' : 'bg-gray-50 dark:bg-dark-secondary'}`}>
                    {value ? (
-                       <iframe 
+                       <iframe
                           title="Preview"
                           srcDoc={value}
                           className="w-full h-full border-0 block"
-                          sandbox="allow-scripts" 
+                          sandbox="allow-scripts"
                        />
                    ) : (
                        <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">

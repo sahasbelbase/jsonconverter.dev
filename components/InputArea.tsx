@@ -404,8 +404,9 @@ const InputArea: React.FC<InputAreaProps> = ({ value, onChange, onProcess, isPro
 
   return (
     <div className="flex flex-col flex-1 min-h-0 space-y-4">
-      {/* Top Toolbar */}
-      <div className="flex-none flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-dark-secondary p-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+      {/* Top Toolbar — sticky so the mode tabs and actions stay in reach while
+          the card scrolls on a short screen. */}
+      <div className="flex-none sticky top-0 z-20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-dark-secondary p-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
         <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto max-w-full">
           <button
             onClick={() => { setMode('code'); setIsSplitView(false); }}

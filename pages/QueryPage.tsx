@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
 import { JSONPath } from 'jsonpath-plus';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Trash2 } from 'lucide-react';
 import ToolShell from '../components/ToolShell';
 import MonacoEditor from '../components/MonacoEditor';
+import Button from '../components/Button';
 import CopyButton from '../components/CopyButton';
 import { useLocalStorageState } from '../lib/useLocalStorageState';
 import { TOOL_BY_PATH } from '../lib/tools';
@@ -100,6 +101,18 @@ const QueryPage: React.FC = () => {
             <span className="text-xs text-gray-500 whitespace-nowrap">
               {result.error ? '' : `${result.count} match${result.count === 1 ? '' : 'es'}`}
             </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setDocument('');
+                setExpression('');
+              }}
+              disabled={!document && !expression}
+              icon={<Trash2 size={14} />}
+            >
+              Clear
+            </Button>
           </div>
           {result.error && (
             <p className="mt-2 flex items-start gap-2 text-sm text-red-600 dark:text-red-400">

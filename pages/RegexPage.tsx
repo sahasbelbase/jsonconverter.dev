@@ -1,6 +1,7 @@
 import React, { useDeferredValue, useMemo, useState } from 'react';
-import { AlertCircle, BookOpen } from 'lucide-react';
+import { AlertCircle, BookOpen, Trash2 } from 'lucide-react';
 import ToolShell from '../components/ToolShell';
+import Button from '../components/Button';
 import CopyButton from '../components/CopyButton';
 import { useLocalStorageState } from '../lib/useLocalStorageState';
 import { TOOL_BY_PATH } from '../lib/tools';
@@ -162,6 +163,19 @@ const RegexPage: React.FC = () => {
             <span className="text-xs text-gray-500 dark:text-gray-400">
               {error ? '' : `${matches.length}${matches.length >= MAX_MATCHES ? '+' : ''} match${matches.length === 1 ? '' : 'es'}`}
             </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setPattern('');
+                setText('');
+                setReplacement('');
+              }}
+              disabled={!pattern && !text && !replacement}
+              icon={<Trash2 size={14} />}
+            >
+              Clear
+            </Button>
           </div>
 
           {error && (

@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import cronstrue from 'cronstrue';
-import { AlertCircle, CalendarClock } from 'lucide-react';
+import { AlertCircle, CalendarClock, Trash2 } from 'lucide-react';
 import ToolShell from '../components/ToolShell';
+import Button from '../components/Button';
 import CopyButton from '../components/CopyButton';
 import { useLocalStorageState } from '../lib/useLocalStorageState';
 import { TOOL_BY_PATH } from '../lib/tools';
@@ -95,6 +96,15 @@ const CronPage: React.FC = () => {
               }`}
             />
             <CopyButton value={expression} label="Copy" />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setExpression('')}
+              disabled={!expression}
+              icon={<Trash2 size={14} />}
+            >
+              Clear
+            </Button>
           </div>
 
           <div className="grid grid-cols-5 gap-1 mt-2">

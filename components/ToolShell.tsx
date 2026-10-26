@@ -24,7 +24,7 @@ const ToolShell: React.FC<ToolShellProps> = ({ tool, children, article }) => (
         is a sibling, reached by scrolling the card past the tool. */}
     <div className="shrink-0 h-full min-h-[34rem] flex flex-col">{children}</div>
     {article && (
-      <article className="shrink-0 mt-8 prose prose-sm dark:prose-invert max-w-none px-4 pb-8 border-t border-gray-200 dark:border-gray-800 pt-8">
+      <article className="shrink-0 mt-8 prose prose-base lg:prose-lg dark:prose-invert max-w-3xl px-4 pb-8 border-t border-gray-200 dark:border-gray-800 pt-8">
         {article}
       </article>
     )}

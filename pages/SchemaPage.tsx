@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { CheckCircle2, Sparkles, XCircle } from 'lucide-react';
+import { CheckCircle2, Sparkles, Trash2, XCircle } from 'lucide-react';
 import ToolShell from '../components/ToolShell';
 import MonacoEditor from '../components/MonacoEditor';
 import Button from '../components/Button';
@@ -116,28 +116,42 @@ const SchemaPage: React.FC = () => {
           </div>
 
           {mode === 'infer' && (
-            <>
-              <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 select-none">
-                <input
-                  type="checkbox"
-                  checked={detectFormats}
-                  onChange={(e) => setDetectFormats(e.target.checked)}
-                  className="rounded border-gray-300 text-primary focus:ring-primary"
-                />
-                Detect formats
-              </label>
-              <div className="flex-1" />
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={useInferredSchema}
-                disabled={!inferred.text}
-                icon={<Sparkles size={14} />}
-              >
-                Use it to validate
-              </Button>
-            </>
+            <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 select-none">
+              <input
+                type="checkbox"
+                checked={detectFormats}
+                onChange={(e) => setDetectFormats(e.target.checked)}
+                className="rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              Detect formats
+            </label>
           )}
+
+          <div className="flex-1" />
+
+          {mode === 'infer' && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={useInferredSchema}
+              disabled={!inferred.text}
+              icon={<Sparkles size={14} />}
+            >
+              Use it to validate
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setDocument('');
+              setSchemaText('');
+            }}
+            disabled={!document && !schemaText}
+            icon={<Trash2 size={14} />}
+          >
+            Clear
+          </Button>
         </div>
 
         <div className="flex-1 grid lg:grid-cols-2 gap-3 min-h-[320px]">

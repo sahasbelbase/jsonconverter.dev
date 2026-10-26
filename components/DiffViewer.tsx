@@ -60,6 +60,19 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
   const modelsRef = useRef<{ original: any; modified: any } | null>(null);
   const [instance, setInstance] = useState<any>(null);
 
+  // Monaco's diff editor defaults to its light theme; without this it stayed
+  // bright white in dark mode. Follow the app theme and the live toggle.
+  const [isDark, setIsDark] = useState(
+    () => typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+  );
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains('dark'));
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
   // On unmount @monaco-editor/react disposes both text models while the diff
   // widget is still pointing at them, which throws "TextModel got disposed
   // before DiffEditorWidget model got reset" into the console. Keeping the
@@ -348,6 +361,7 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
         <DiffEditor
           height="100%"
           language={language}
+          theme={isDark ? 'vs-dark' : 'light'}
           original={seedOriginal}
           modified={seedModified}
           keepCurrentOriginalModel

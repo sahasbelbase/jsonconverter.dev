@@ -8,6 +8,7 @@ import AnalyticsTracker from './AnalyticsTracker';
 import CommandPalette from './CommandPalette';
 import { useTheme } from '../lib/useTheme';
 import { TOOL_BY_PATH } from '../lib/tools';
+import { COMMAND_PALETTE_HINT } from '../lib/platform';
 
 const WorkspaceFallback: React.FC = () => (
   <div className="flex-1 flex items-center justify-center text-sm text-gray-400">
@@ -66,11 +67,11 @@ const Layout: React.FC = () => {
             <button
               onClick={() => setShowPalette(true)}
               className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-sm"
-              title="Search tools (Ctrl/Cmd + K)"
+              title={`Search tools (${COMMAND_PALETTE_HINT})`}
             >
               <span className="font-medium">Search tools</span>
-              <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-                ⌘K
+              <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 whitespace-nowrap">
+                {COMMAND_PALETTE_HINT}
               </kbd>
             </button>
             <button
@@ -98,8 +99,6 @@ const Layout: React.FC = () => {
         </div>
 
         <main className="flex-1 flex flex-col min-h-0 w-full pr-2 md:pr-4 py-4 overflow-hidden relative pl-20 md:pl-24">
-          <AdSlot position="top" />
-
           <div className="flex-1 flex flex-col min-w-0 min-h-0 max-w-screen-2xl mx-auto w-full">
             <div className="flex-none flex items-center justify-between mb-2 px-1">
               <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-200 ml-2 truncate">
@@ -117,7 +116,9 @@ const Layout: React.FC = () => {
               </Suspense>
             </div>
 
-            <AdSlot position="bottom" className="lg:hidden" />
+            {/* A single slim banner anchored below the workspace — out of the
+                way of the tool, but still on screen as the user works. */}
+            <AdSlot position="bottom" />
           </div>
         </main>
       </div>

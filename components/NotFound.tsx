@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Compass } from 'lucide-react';
 import SeoHead from './SeoHead';
 import { TOOLS } from '../lib/tools';
+import { COMMAND_PALETTE_HINT } from '../lib/platform';
 
 const NotFound: React.FC = () => (
   <div className="flex-1 flex flex-col items-center justify-center text-center p-8 gap-6">
@@ -15,7 +16,7 @@ const NotFound: React.FC = () => (
     <div>
       <p className="text-2xl font-bold mb-1">That page doesn’t exist</p>
       <p className="text-sm text-gray-500 dark:text-gray-400">
-        Pick a tool below, or press <kbd className="px-1 py-0.5 text-xs rounded bg-gray-100 dark:bg-gray-800">⌘K</kbd>.
+        Pick a tool below, or press <kbd className="px-1 py-0.5 text-xs rounded bg-gray-100 dark:bg-gray-800 whitespace-nowrap">{COMMAND_PALETTE_HINT}</kbd>.
       </p>
     </div>
     <div className="flex flex-wrap justify-center gap-2 max-w-2xl">
